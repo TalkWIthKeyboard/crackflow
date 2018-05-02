@@ -1,0 +1,14 @@
+.settings/
+.avoscloud/
+typings/
+node_modules/
+.idea/
+*.iml
+reports/
+*-compiled.*
+npm-debug.log
+.tern-port
+.DS_Store
+.git/
+dist/
+test.ts

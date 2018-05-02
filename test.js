@@ -1,0 +1,1 @@
+console.log(!('!'.match(/[a-zA-Z]*/)[0] === ''))
