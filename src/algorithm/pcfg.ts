@@ -40,7 +40,7 @@ function _typeof(char: string): string {
  * 2. 这里只进行统计，不进行排序
  * @param pwds 多个密码
  */
-export default function basicPcfgWorker(pwds: string[]) {
+export function basicPcfgWorker(pwds: string[]) {
   // 1. 统计密码结构
   _.each(pwds, pwd => {
     let structure = ''
@@ -89,6 +89,7 @@ function _makeUpPassword(
   // 边界条件
   if (index >= fragmetList.length) {
     redisClient.zadd(REDIS_PWD_PROBABILITY_KEY, probability.toString(), pwd)
+    return
   }
 
   let temProbability = probability
@@ -103,18 +104,20 @@ function _makeUpPassword(
 }
 
 /**
- * 生成密码
- * 结构降序 + 结构上的选择降序
+ * 生成密码并进行计数
  * @param count 密码总数
  */
-async function passwordCount(count: number) {
+export async function passwordCount(count: number) {
   const structures = await zrevrange(REDIS_PCFG_COUNT_KEY, 0, -1, 'WITHSCORES')
   for (let structure of structures) {
     const [...units] = structure.key.split(',')
-    const typeNumberList = _.map(units, u => {
+    const typeNumberList = _.compact(_.map(units, u => {
+      if (u === '') {
+        return null
+      }
       const [type, number] = u.split('/')
       return { type, number }
-    })
+    }))
     const fragmetList = await Promise.map(typeNumberList, u => {
       return zrevrange(
         REDIS_FRAGMET_COUNT_KEY
