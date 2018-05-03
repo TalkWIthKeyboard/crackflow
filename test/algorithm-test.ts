@@ -3,10 +3,11 @@ import * as _ from 'lodash'
 import * as DEBUG from 'debug'
 
 import redisClient from '../src/modules/redis-client'
-import basicPcfg from '../src/algorithm/pcfg'
+import { basicPcfgWorker, passwordCount } from '../src/algorithm/pcfg'
 
-const REDIS_PCFK_COUNT_KEY = `crackflow-test:basic:pcfg:count`
-const REDIS_FRAGMET_COUNT_KEY = `crackflow-test:basic:pcfg:*`
+const REDIS_PWD_COUNT_KEY = 'crackflow-test:basic:pcfg:probability'
+const REDIS_PCFG_COUNT_KEY = 'crackflow-test:basic:pcfg:count'
+const REDIS_FRAGMET_COUNT_KEY = 'crackflow-test:basic:pcfg:*'
 
 const debug = DEBUG('crackflow-test:algorithm:basic-pcfg')
 
@@ -116,23 +117,26 @@ const mockPwds: string[] = [
 // 清空所有的 test 缓存
 test.beforeEach(async () => {
   const removeKeys = await redisClient.keys(REDIS_FRAGMET_COUNT_KEY)
-  await redisClient.del(...removeKeys)
+  if (removeKeys.length > 0) {
+    await redisClient.del(...removeKeys)    
+  }
 })
 
-test('Basic pcfg', async t => {
-  basicPcfg(mockPwds)
+test('Basic pcfg statistic', async t => {
+  basicPcfgWorker(mockPwds)
   debug('Finished all works.')
-  const counts = await redisClient.hgetall(REDIS_PCFK_COUNT_KEY)
-  let max = 0
-  let maxKey = ''
-  _.each(_.keys(counts), k => {
-    if (parseInt(counts[k]) > max) {
-      max = parseInt(counts[k])
-      maxKey = k
-    }
-  })
-  t.is(max, 20)
-  t.is(maxKey, 'A/6,')
+  const count = (await redisClient.zscore(REDIS_PCFG_COUNT_KEY, 'A/6,')).toString()
+  t.is(count, '20')
+})
+
+test('Basic pcfg generate', async t => {
+  basicPcfgWorker(mockPwds)
+  await passwordCount(mockPwds.length)
+  const topOne = await redisClient.zrevrange(REDIS_PWD_COUNT_KEY, 0, 1, 'WITHSCORES')
+  const result = ['tianya', '0.0060000000000000001', '811091', '0.0040000000000000001']
+  for (let index in result) {
+    t.is(topOne[index], result[index])
+  }
 })
 
 // 清空所有的 test 缓存
