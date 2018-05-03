@@ -9,7 +9,8 @@
     "clean": "rm -rf dist",
     "purge": "rm -rf package-lock.json node_modules && npm run clean",
     "dev": "npm run clean && npm run compile && NODE_ENV=dev PORT=3000 DEBUG=jike:game:* node dist/src/app.js",
-    "test": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow-test:algorithm:* ava --serial dist/test/algorithm-test.js"
+    "test": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow-test:algorithm:* ava --serial dist/test/algorithm-test.js",
+    "lint": "tslint --project ."
   },
   "repository": {
     "type": "git",
@@ -38,6 +39,8 @@
     "@types/mongoose": "^5.0.11",
     "@types/node": "^10.0.2",
     "ava": "^0.25.0",
+    "tslint": "^5.9.1",
+    "tslint-xo": "^0.7.2",
     "typescript": "^2.8.3"
   }
 }
