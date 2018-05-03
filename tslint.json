@@ -1,0 +1,78 @@
+{
+  "extends": "tslint-xo/space",
+  "rulesDirectory": [
+    "src",
+    "config"
+  ],
+  "rules": {
+    "indent": [
+      true,
+      "spaces",
+      2
+    ],
+    "semicolon": [
+      true,
+      "never",
+      "strict-bound-class-methods"
+    ],
+    "radix": false,
+    "no-import-side-effect": false,
+    "no-non-null-assertion": false,
+    "only-arrow-functions": false,
+    "newline-before-return": false,
+    "type-literal-delimiter": false,
+    "no-http-string": false,
+    "underscore-consistent-invocation": false,
+    "comment-format": [
+      true,
+      "check-space"
+    ],
+    "variable-name": [
+      true,
+      "ban-keywords"
+    ],
+    "object-curly-spacing": [
+      true,
+      "always"
+    ],
+    "no-parameter-reassignment": {
+      "severity": "warning"
+    },
+    "no-unnecessary-type-assertion": {
+      "severity": "warning"
+    },
+    "promise-function-async": {
+      "severity": "warning"
+    },
+    "await-promise": {
+      "severity": "warning"
+    },
+    "restrict-plus-operands": {
+      "severity": "warning"
+    },
+    "no-require-imports": {
+      "severity": "warning"
+    },
+    "no-redundant-jsdoc": {
+      "severity": "warning"
+    },
+    "early-exit": {
+      "severity": "warning"
+    },
+    "promise-must-complete": {
+      "severity": "warning"
+    },
+    "trailing-comma": [
+      true,
+      {
+        "multiline": {
+          "objects": "always",
+          "arrays": "always",
+          "functions": "never",
+          "typeLiterals": "ignore"
+        },
+        "esSpecCompliant": true
+      }
+    ]
+  }
+}

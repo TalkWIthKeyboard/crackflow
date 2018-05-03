@@ -1,12 +1,9 @@
 import * as _ from 'lodash'
-import * as DEBUG from 'debug'
-import * as config from 'config'
 import * as Promise from 'bluebird'
 
 import redisClient from '../modules/redis-client'
 import { parserZrevrange as zrevrange } from '../utils'
 
-const debug = DEBUG('crackflow:algorithm:basic-pcfg')
 // sortedset { structure: count }
 const REDIS_PCFG_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:basic:pcfg:count`
 // sortedset { fragmet: count }, {{type}} -> A/B/C, {{number}} -> 碎片的长度
@@ -20,8 +17,7 @@ const MARK_TYPE = 'C'
 
 /**
  * 判断这个字符的类型
- * @param {string} char 
- * @returns {string} 
+ * @param char
  */
 function _typeof(char: string): string {
   if (_.get(char.match(/[a-zA-Z]*/), 0, '') !== '') {
@@ -46,7 +42,7 @@ export function basicPcfgWorker(pwds: string[]) {
     let structure = ''
     let pre = 0
     let fragmet = pwd[0]
-    let fragmentList: string[] = []
+    const fragmentList: string[] = []
     for (let index = 1; index <= pwd.length; index += 1) {
       // 边界+1，方便统一进行处理
       if (index === pwd.length || _typeof(pwd[index]) !== _typeof(pwd[index - 1])) {
@@ -56,15 +52,15 @@ export function basicPcfgWorker(pwds: string[]) {
                 .replace(/{{type}}/, _typeof(pwd[index - 1]))
                 .replace(/{{number}}/, (index - pre).toString()),
             1,
-            fragmet,            
+            fragmet
         )
-        structure += `${_typeof(pwd[index-1])}/${index - pre},`
+        structure += `${_typeof(pwd[index - 1])}/${index - pre},`
         fragmentList.push(fragmet)
         fragmet = ''
         pre = index
-      } else {
-        fragmet += pwd[index]
+        continue
       }
+      fragmet += pwd[index]
     }
     // 持久化结构结果
     redisClient.zincrby(REDIS_PCFG_COUNT_KEY, 1, structure)
@@ -77,11 +73,11 @@ export function basicPcfgWorker(pwds: string[]) {
  * @param probability   可能性 (结构的可能性 * 每个元素的可能性)
  * @param pwd           现在拼凑出来的密码
  * @param count         密码总个数
- * @param fragmetList 
+ * @param fragmetList
  */
 function _makeUpPassword(
-  index: number, 
-  probability: number, 
+  index: number,
+  probability: number,
   pwd: string,
   count: number,
   fragmetList
@@ -94,9 +90,9 @@ function _makeUpPassword(
 
   let temProbability = probability
   let temPwd = pwd
-  for (let i = 0; i < fragmetList[index].length; i += 1) {
-    temPwd += fragmetList[index][i].key
-    temProbability *= fragmetList[index][i].value / count
+  for (const fragmet of fragmetList[index]) {
+    temPwd += fragmet.key
+    temProbability *= fragmet.value / count
     _makeUpPassword(index + 1, temProbability, temPwd, count, fragmetList)
     temPwd = pwd
     temProbability = probability
@@ -109,20 +105,20 @@ function _makeUpPassword(
  */
 export async function passwordCount(count: number) {
   const structures = await zrevrange(REDIS_PCFG_COUNT_KEY, 0, -1, 'WITHSCORES')
-  for (let structure of structures) {
+  for (const structure of structures) {
     const [...units] = structure.key.split(',')
     const typeNumberList = _.compact(_.map(units, u => {
       if (u === '') {
         return null
       }
-      const [type, number] = u.split('/')
-      return { type, number }
+      const [type, num] = u.split('/')
+      return { type, num }
     }))
     const fragmetList = await Promise.map(typeNumberList, u => {
       return zrevrange(
         REDIS_FRAGMET_COUNT_KEY
           .replace(/{{type}}/, u.type)
-          .replace(/{{number}}/, u.number),
+          .replace(/{{number}}/, u.num),
         0, -1, 'WITHSCORES'
       )
     })

@@ -1,6 +1,5 @@
-import * as _ from 'lodash'
 import db from './modules/mongo'
-import { Schema, Model } from 'mongoose'
+import { Schema } from 'mongoose'
 
 const schemas = {
   NoUserInfoPassword: new Schema({
@@ -18,7 +17,7 @@ const schemas = {
     birthday: { type: String, default: '' },
     mobile: { type: String, default: '' },
     namePinyin: [String],
-    nameFirstLetter: { type: String, default: '' }
+    nameFirstLetter: { type: String, default: '' },
   }, { collection: 'UserInfoPassword' }),
 
   Statistic: new Schema({
@@ -43,7 +42,7 @@ const schemas = {
     usernameStringFragment: [String],
     emailNumberFragment: [String],
     emailStringFragment: [String],
-  }, { collection: 'Unit' })
+  }, { collection: 'Unit' }),
 }
 
 schemas.NoUserInfoPassword.index({ source: 1 })
@@ -56,4 +55,3 @@ export default {
   Statistic: db.model('Statistic', schemas.Statistic),
   Unit: db.model('Unit', schemas.Unit),
 }
-
