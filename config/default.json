@@ -3,5 +3,7 @@
     "host": "127.0.0.1",
     "port": 6379,
     "auth": ""
-  }
+  },
+  "mongoUri": "mongodb://passworddataOnwer:hell0w0rld@localhost:27017/passworddata",
+  "mysqlUri": "mysql://root:sw1314277@localhost:3306/password"
 }

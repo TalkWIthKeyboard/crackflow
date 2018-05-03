@@ -25,3 +25,13 @@ export async function parserZrevrange(
   }
   return result
 }
+
+/**
+ * 访问原始数据的query语句
+ */
+export const queryCase = {
+  count: 'SELECT COUNT(*) FROM {table}',
+  itrAll: 'SELECT {query_schema} FROM {table} ' +
+    'WHERE id >= (SELECT id FROM {table} ORDER BY id LIMIT {start}, 1) ' +
+    'ORDER BY id LIMIT 10000',
+}
