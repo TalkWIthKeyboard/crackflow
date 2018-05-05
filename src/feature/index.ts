@@ -14,23 +14,30 @@ const REDIS_USER_INFO_REPETITION = 'crackflow:statistic:repetition:set:{{table}}
 /**
  * 解析特征的worker
  * @param table           数据源对应的表名
+ * @param rowFeatureMap   原始数据的特征名与标准特征名的对应关系
  * @param withUserInfo    是否包含用户信息
+ * @param testLimite      是否是测试（测试时只请求10000个数据）
  */
 export default async function parserWorker(
   table: string,
   rowFeatureMap,
-  withUserInfo: boolean
+  withUserInfo: boolean,
+  testLimite?: boolean
 ) {
   debug(`Start parser ${table}`)
   // 1. 获取这张表的数据量
-  const countQuery = await query(queryCase.count.replace(/{table}/g, table))
   let count: number
-  if (countQuery) {
-    count = _.values(countQuery[0])[0]
-    debug(`${table} has ${count} datas, start to query all data.`)
+  if (testLimite !== undefined && testLimite) {
+    count = 10000
   } else {
-    debug(`${table} has none datas, maybe we have some errors.`)
-    return
+    const countQuery = await query(queryCase.count.replace(/{table}/g, table))
+    if (countQuery) {
+      count = _.values(countQuery[0])[0]
+      debug(`${table} has ${count} datas, start to query all data.`)
+    } else {
+      debug(`${table} has none datas, maybe we have some errors.`)
+      return
+    }
   }
   // 2. 生成分批请求的sql-query语句
   const sqlList: string[] = []
