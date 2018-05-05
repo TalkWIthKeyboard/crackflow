@@ -44,7 +44,6 @@ test('Parser t12306 data', async t => {
   await parserWorker('t12306', mockRowFeatureMap, true, true)
   const pwdIncludeCount = await redisClient.hgetall('crackflow:statistic:pwdInclude:count')
   t.deepEqual(pwdIncludeCount, mockResult)
-  await models.Unit.remove({ source: 't12306' }).exec()
 })
 
 test('Parser duduniu data', async t => {
@@ -75,7 +74,6 @@ test('Parser duduniu data', async t => {
   await parserWorker('duduniu', mockRowFeatureMap, true, true)
   const pwdIncludeCount = await redisClient.hgetall('crackflow:statistic:pwdInclude:count')
   t.deepEqual(pwdIncludeCount, mockResult)
-  await models.Unit.remove({ source: 'duduniu' }).exec()
 })
 
 test('Parser 7k7k data', async t => {
@@ -105,7 +103,6 @@ test('Parser 7k7k data', async t => {
   await parserWorker('7k7k', mockRowFeatureMap, true, true)
   const pwdIncludeCount = await redisClient.hgetall('crackflow:statistic:pwdInclude:count')
   t.deepEqual(pwdIncludeCount, mockResult)
-  await models.Unit.remove({ source: '7k7k' }).exec()
 })
 
 test('Parser tianya data', async t => {
@@ -136,12 +133,12 @@ test('Parser tianya data', async t => {
   await parserWorker('tianya', mockRowFeatureMap, true, true)
   const pwdIncludeCount = await redisClient.hgetall('crackflow:statistic:pwdInclude:count')
   t.deepEqual(pwdIncludeCount, mockResult)
-  await models.Unit.remove({ source: 'tianya' }).exec()
 })
 
-test.afterEach(async () => {
+test.after(async () => {
   const removeKeys = await redisClient.keys(REDIS_STATISTIC_KEY)
   if (removeKeys.length > 0) {
     await redisClient.del(...removeKeys)
   }
+  await models.Unit.remove({}).exec()
 })
