@@ -91,25 +91,26 @@ export default class ParserWithUserInfo {
 
   private _passwordIncludeStatistic(data: AllFeature) {
     _.each(_.keys(data), key => {
-      if (key !== 'password' && key !== 'source') {
-        const value = data[key]
-        switch (typeof value) {
-          case 'string':
-            if (data.password.includes(value)) {
+      if (key === 'password' || key === 'source') {
+        return
+      }
+      const value = data[key]
+      switch (typeof value) {
+        case 'string':
+          if (data.password.includes(value)) {
+            this._pwdIncludeFeature[key] += 1
+          }
+          break
+        // 针对数字片段和字母片段
+        case 'object':
+          for (const v of value) {
+            if (data.password.includes(v)) {
               this._pwdIncludeFeature[key] += 1
+              break
             }
-            break
-          // 针对数字片段和字母片段
-          case 'object':
-            for (const v of value) {
-              if (data.password.includes(v)) {
-                this._pwdIncludeFeature[key] += 1
-                break
-              }
-            }
-            break
-          default:
-        }
+          }
+          break
+        default:
       }
     })
   }
@@ -139,15 +140,16 @@ export default class ParserWithUserInfo {
         }
         // 判断其他特征的可用性
         _.forEach(d, (value, key) => {
-          if (this._rowFeatureMap[key] !== 'password') {
-            const cleanFunc = worker[this._rowFeatureMap[key]].clean
-            const parserFunc = worker[this._rowFeatureMap[key]].parser
-            const cleanedResult = cleanFunc(value)
-            if (cleanedResult) {
-              Object.assign(flattenFeature, parserFunc(cleanedResult))
-              this._rowFeatureLegalCount[this._rowFeatureMap[key]] += 1
-              featureLegalCount += 1
-            }
+          if (this._rowFeatureMap[key] === 'password') {
+            return
+          }
+          const cleanFunc = worker[this._rowFeatureMap[key]].clean
+          const parserFunc = worker[this._rowFeatureMap[key]].parser
+          const cleanedResult = cleanFunc(value)
+          if (cleanedResult) {
+            Object.assign(flattenFeature, parserFunc(cleanedResult))
+            this._rowFeatureLegalCount[this._rowFeatureMap[key]] += 1
+            featureLegalCount += 1
           }
         })
         if (featureLegalCount === 0) {
@@ -186,7 +188,7 @@ export default class ParserWithUserInfo {
       })
       // tslint:disable-next-line
       models.Unit.insertMany(this._featureList)
-    } catch(err) {
+    } catch (err) {
       console.log(err)
     }
   }

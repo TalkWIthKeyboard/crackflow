@@ -9,7 +9,7 @@ const REDIS_STATISTIC_KEY = 'crackflow:statistic:*'
 test.beforeEach(async () => {
   const removeKeys = await redisClient.keys(REDIS_STATISTIC_KEY)
   if (removeKeys.length > 0) {
-    await redisClient.del(...removeKeys)    
+    await redisClient.del(...removeKeys)
   }
 })
 
@@ -35,7 +35,7 @@ test('Parser t12306 data', async t => {
 
   const mockRowFeatureMap = {
     password: 'password',
-    email: 'email', 
+    email: 'email',
     name: 'name',
     CtfID: 'ctfid',
     mobile: 'mobile',

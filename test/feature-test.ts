@@ -2,7 +2,6 @@ import test from 'ava'
 import * as _ from 'lodash'
 
 import worker from '../src/feature/row-feature-worker'
-import ParserWithUserInfo from '../src/feature/parser/parser-with-user-info'
 
 test('Username clean test', t => {
   t.is(worker.username.clean('abcdefg'), 'abcdefg')
