@@ -94,3 +94,12 @@ export interface AllRowDataWithUserInfo {
   name?: string
   mobile?: string
 }
+
+export interface AllRowDataWithoutUserInfo {
+  password: string
+  numcount: number
+}
+
+export interface WithoutUserInfoCount extends AllRowDataWithoutUserInfo {
+  source: string
+}

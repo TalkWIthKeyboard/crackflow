@@ -3,13 +3,14 @@ import * as Promise from 'bluebird'
 import * as DEBUG from 'debug'
 
 import ParserWithUserInfo from './parser/parser-with-user-info'
+import ParserWithoutUserInfo from './parser/parser-without-user-info'
 import { queryCase } from '../utils'
 import query from '../modules/mysql'
 import redisClient from '../modules/redis-client'
 
 const debug = DEBUG('crackflow:feature:parserWorker')
 // set { userInfo.join(',') }
-const REDIS_USER_INFO_REPETITION = 'crackflow:statistic:repetition:set:{{table}}'
+const REDIS_USER_INFO_REPETITION = `crackflow-${process.env.NODE_ENV}:statistic:repetition:set:{{table}}`
 
 /**
  * 解析特征的worker
@@ -53,11 +54,9 @@ export default async function parserWorker(
   await Promise.mapSeries(_.chunk(sqlList, 5), sqls => {
     return Promise.map(sqls, async sql => {
       const rowMysqlData = await query(sql) as any[]
-      // todo 等完成 ParserWithnotUserInfo 以后再回来修改
-      let parsered
-      if (withUserInfo) {
-        parsered = new ParserWithUserInfo(rowFeatureMap, rowMysqlData, table)
-      }
+      const parsered = withUserInfo
+        ? new ParserWithUserInfo(rowFeatureMap, rowMysqlData, table)
+        : new ParserWithoutUserInfo(rowFeatureMap, rowMysqlData, table)
       await parsered.cleanAndGetFeature()
       total += parsered.count
       debug(`${table} finish ${total}/${count} mongo save, repetition: ${parsered.repetitionCount}, rubbish: ${parsered.illegalCount}`)

@@ -4,7 +4,9 @@ import parserWorker from '../src/feature'
 import redisClient from '../src/modules/redis-client'
 import models from '../src/models'
 
-const REDIS_STATISTIC_KEY = 'crackflow:statistic:*'
+const REDIS_STATISTIC_KEY = `crackflow-${process.env.NODE_ENV}:statistic:*`
+const REDIS_PWD_INCLUDE_KEY = `crackflow-${process.env.NODE_ENV}:statistic:pwdInclude:count`
+const REDIS_LEGAL_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:statistic:legalCount`
 
 test.beforeEach(async () => {
   const removeKeys = await redisClient.keys(REDIS_STATISTIC_KEY)
@@ -42,7 +44,7 @@ test('Parser t12306 data', async t => {
     username: 'username',
   }
   await parserWorker('t12306', mockRowFeatureMap, true, true)
-  const pwdIncludeCount = await redisClient.hgetall('crackflow:statistic:pwdInclude:count')
+  const pwdIncludeCount = await redisClient.hgetall(REDIS_PWD_INCLUDE_KEY)
   t.deepEqual(pwdIncludeCount, mockResult)
 })
 
@@ -72,7 +74,7 @@ test('Parser duduniu data', async t => {
     email: 'email',
   }
   await parserWorker('duduniu', mockRowFeatureMap, true, true)
-  const pwdIncludeCount = await redisClient.hgetall('crackflow:statistic:pwdInclude:count')
+  const pwdIncludeCount = await redisClient.hgetall(REDIS_PWD_INCLUDE_KEY)
   t.deepEqual(pwdIncludeCount, mockResult)
 })
 
@@ -101,7 +103,7 @@ test('Parser 7k7k data', async t => {
     username: 'username',
   }
   await parserWorker('7k7k', mockRowFeatureMap, true, true)
-  const pwdIncludeCount = await redisClient.hgetall('crackflow:statistic:pwdInclude:count')
+  const pwdIncludeCount = await redisClient.hgetall(REDIS_PWD_INCLUDE_KEY)
   t.deepEqual(pwdIncludeCount, mockResult)
 })
 
@@ -131,8 +133,32 @@ test('Parser tianya data', async t => {
     username: 'username',
   }
   await parserWorker('tianya', mockRowFeatureMap, true, true)
-  const pwdIncludeCount = await redisClient.hgetall('crackflow:statistic:pwdInclude:count')
+  const pwdIncludeCount = await redisClient.hgetall(REDIS_PWD_INCLUDE_KEY)
   t.deepEqual(pwdIncludeCount, mockResult)
+})
+
+test('Parser phpbb data', async t => {
+  const mockRowFeatureMap = {
+    password: 'password',
+    numcount: 'numcount',
+  }
+
+  const mockResult = { phpbb_legal: '9887', phpbb_total: '10000' }
+  await parserWorker('phpbb', mockRowFeatureMap, false, true)
+  const count = await redisClient.hgetall(REDIS_LEGAL_COUNT_KEY)
+  t.deepEqual(count, mockResult)
+})
+
+test('Parser rock data', async t => {
+  const mockRowFeatureMap = {
+    password: 'password',
+    numcount: 'numcount',
+  }
+
+  const mockResult = { rock_legal: '9993', rock_total: '10000' }
+  await parserWorker('rock', mockRowFeatureMap, false, true)
+  const count = await redisClient.hgetall(REDIS_LEGAL_COUNT_KEY)
+  t.deepEqual(count, mockResult)
 })
 
 test.after(async () => {
@@ -141,4 +167,5 @@ test.after(async () => {
     await redisClient.del(...removeKeys)
   }
   await models.Unit.remove({}).exec()
+  await models.UnitWithoutUserInfo.remove({}).exec()
 })

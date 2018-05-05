@@ -46,6 +46,12 @@ const schemas = {
     namePinyin: String,
     namePinyinFirstLetter: String,
   }, { collection: 'Unit' }),
+
+  UnitWithoutUserInfo: new Schema({
+    source: { type: String, require: true },
+    password: { type: String, required: true },
+    numcount: { type: Number, required: true },
+  }, { collection: 'UnitWithoutUserInfo' }),
 }
 
 schemas.NoUserInfoPassword.index({ source: 1 })
@@ -57,4 +63,5 @@ export default {
   UserInfoPassword: db.model('UserInfoPassword', schemas.UserInfoPassword),
   Statistic: db.model('Statistic', schemas.Statistic),
   Unit: db.model('Unit', schemas.Unit),
+  UnitWithoutUserInfo: db.model('UnitWithoutUserInfo', schemas.UnitWithoutUserInfo),
 }

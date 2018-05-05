@@ -1,42 +1,44 @@
 import * as _ from 'lodash'
 import * as Promise from 'bluebird'
+import * as DEBUG from 'debug'
 
 import { AllFeature, AllRowDataWithUserInfo } from '../interface'
 import worker from '../row-feature-worker'
 import redisClient from '../../modules/redis-client'
 import models from '../../models'
 
+const debug = DEBUG('crackflow:statistic:parser')
 // hm { tableName_(legal/total/repetition): count }
-const REDIS_STATISTIC_LEGAL_COUNT = 'crackflow:statistic:legalCount'
+const REDIS_STATISTIC_LEGAL_COUNT = `crackflow-${process.env.NODE_ENV}:statistic:legalCount`
 // hm { tableName_rowFeature: count }
-const REDIS_STATISTIC_ROW_FEATURE_LEGAL_COUNT = 'crackflow:statistic:rowFeature:legalCount'
+const REDIS_STATISTIC_ROW_FEATURE_LEGAL_COUNT = `crackflow-${process.env.NODE_ENV}:statistic:rowFeature:legalCount`
 // hm { tableName_feature: count }
-const REDIS_STATISTIC_PWD_INCLUDE_COUNT = 'crackflow:statistic:pwdInclude:count'
+const REDIS_STATISTIC_PWD_INCLUDE_COUNT = `crackflow-${process.env.NODE_ENV}:statistic:pwdInclude:count`
 // set { userInfo.join(',') }
-const REDIS_USER_INFO_REPETITION = 'crackflow:statistic:repetition:set:{{table}}'
+const REDIS_USER_INFO_REPETITION = `crackflow-${process.env.NODE_ENV}:statistic:repetition:set:{{table}}`
 
 /**
- * 从 row-data -> cleanly-data -> feature
+ * row-data -> cleanly-data -> feature
  */
 export default class ParserWithUserInfo {
   // 数据源名称
-  protected readonly _tableName
+  private readonly _tableName
   // 原始特征到标准特征的绑定 { rowFeatureName: standardFeatureName }
-  protected readonly _rowFeatureMap
+  private readonly _rowFeatureMap
   // 原始数据 [{ rowFeatureName: value }]
-  protected readonly _rowData: AllRowDataWithUserInfo[]
+  private readonly _rowData: AllRowDataWithUserInfo[]
   // 原始数据的个数
-  protected readonly _count: number
+  private readonly _count: number
   // 重复数据的个数
-  protected _repetitionCount: number
+  private _repetitionCount: number
   // 合法数据个数( 密码是合法可用的，并且其他特征至少有一个是合法可用的 )
-  protected _legalCount: number
+  private _legalCount: number
   // 合法原始特征分别的个数
-  protected _rowFeatureLegalCount: {}
+  private readonly _rowFeatureLegalCount: {}
   // 提取到的特征数组
-  protected _featureList: AllFeature[]
+  private readonly _featureList: AllFeature[]
   // 密码当中包含特征的个数
-  protected _pwdIncludeFeature: {}
+  private readonly _pwdIncludeFeature: {}
 
   constructor(
     rowFeatureMap,
@@ -189,7 +191,7 @@ export default class ParserWithUserInfo {
       // tslint:disable-next-line
       models.Unit.insertMany(this._featureList)
     } catch (err) {
-      console.log(err)
+      debug('ParserWithUserInfo has the error: ', err)
     }
   }
 }
