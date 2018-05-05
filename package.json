@@ -9,7 +9,7 @@
     "clean": "rm -rf dist",
     "purge": "rm -rf package-lock.json node_modules && npm run clean",
     "dev": "npm run clean && npm run compile && NODE_ENV=dev PORT=3000 DEBUG=jike:game:* node dist/src/app.js",
-    "test": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow-test:algorithm:* ava --serial dist/test/algorithm-test.js",
+    "test": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow-test:algorithm:* ava --serial dist/test/parser-test.js",
     "lint": "tslint --project ."
   },
   "repository": {
@@ -29,7 +29,9 @@
     "debug": "^3.1.0",
     "ioredis": "^3.2.2",
     "lodash": "^4.17.10",
-    "mongoose": "^5.0.17"
+    "mongoose": "^5.0.17",
+    "mysql": "^2.15.0",
+    "pinyin": "^2.8.3"
   },
   "devDependencies": {
     "@types/config": "0.0.34",
@@ -37,7 +39,9 @@
     "@types/ioredis": "^3.2.7",
     "@types/lodash": "^4.14.108",
     "@types/mongoose": "^5.0.11",
+    "@types/mysql": "^2.15.4",
     "@types/node": "^10.0.2",
+    "@types/pinyin": "^2.8.0",
     "ava": "^0.25.0",
     "tslint": "^5.9.1",
     "tslint-xo": "^0.7.2",

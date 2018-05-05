@@ -1,6 +1,7 @@
 import * as mongoose from 'mongoose'
+import * as config from 'config'
 
 // single database
-export default mongoose.createConnection('mongodb://passworddataOnwer:hell0w0rld@localhost:27017/passworddata', {
+export default mongoose.createConnection(config.get('mongoUri'), {
   config: { autoIndex: false },
 })
