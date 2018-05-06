@@ -9,7 +9,7 @@
     "clean": "rm -rf dist",
     "purge": "rm -rf package-lock.json node_modules && npm run clean",
     "dev": "npm run clean && npm run compile && NODE_ENV=dev PORT=3000 DEBUG=jike:game:* node dist/src/app.js",
-    "test": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow:* ava --serial dist/test/statistic-test.js",
+    "test": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow:* ava --serial dist/test/algorithm-test.js",
     "lint": "tslint --project .",
     "fix": "tslint --fix --project .",
     "cluster": "npm run clean && npm run compile && NODE_ENV=production DEBUG=crackflow:* node dist/src/flow/index.js",
