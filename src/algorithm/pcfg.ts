@@ -29,6 +29,11 @@ function _typeof(char: string): string {
   return MARK_TYPE
 }
 
+interface PwdCount {
+  code: string
+  count: number
+}
+
 /**
  * 多进程的 basic-PCFG 算法的 Worker
  * A -> number, B -> char, C -> mark
@@ -36,34 +41,35 @@ function _typeof(char: string): string {
  * 2. 这里只进行统计，不进行排序
  * @param pwds 多个密码
  */
-export function basicPcfgWorker(pwds: string[]) {
+export function basicPcfgWorker(pwds: PwdCount[]) {
   // 1. 统计密码结构
   _.each(pwds, pwd => {
     let structure = ''
     let pre = 0
-    let fragmet = pwd[0]
+    let fragmet = pwd.code[0]
     const fragmentList: string[] = []
-    for (let index = 1; index <= pwd.length; index += 1) {
+    for (let index = 1; index <= pwd.code.length; index += 1) {
+      const code = pwd.code
       // 边界+1，方便统一进行处理
-      if (index === pwd.length || _typeof(pwd[index]) !== _typeof(pwd[index - 1])) {
+      if (index === code.length || _typeof(code[index]) !== _typeof(code[index - 1])) {
         // 持久化碎片的统计结果
         redisClient.zincrby(
             REDIS_FRAGMET_COUNT_KEY
-                .replace(/{{type}}/, _typeof(pwd[index - 1]))
+                .replace(/{{type}}/, _typeof(code[index - 1]))
                 .replace(/{{number}}/, (index - pre).toString()),
             1,
             fragmet
         )
-        structure += `${_typeof(pwd[index - 1])}/${index - pre},`
+        structure += `${_typeof(code[index - 1])}/${index - pre},`
         fragmentList.push(fragmet)
         fragmet = ''
         pre = index
         continue
       }
-      fragmet += pwd[index]
+      fragmet += code[index]
     }
     // 持久化结构结果
-    redisClient.zincrby(REDIS_PCFG_COUNT_KEY, 1, structure)
+    redisClient.zincrby(REDIS_PCFG_COUNT_KEY, pwd.count, structure)
   })
 }
 
