@@ -13,7 +13,7 @@
     "lint": "tslint --project .",
     "fix": "tslint --fix --project .",
     "cluster": "npm run clean && npm run compile && NODE_ENV=production DEBUG=crackflow:* node dist/src/flow/index.js",
-    "statistic": "npm run clean && npm run compile && NODE_ENV=production DEBUG=crackflow:* node dist/src/statistic/vesrion-value.js"
+    "statistic": "npm run clean && npm run compile && NODE_ENV=production DEBUG=crackflow:* node dist/src/statistic/index.js"
   },
   "repository": {
     "type": "git",
@@ -34,6 +34,7 @@
     "lodash": "^4.17.10",
     "mongoose": "^5.0.17",
     "mysql": "^2.15.0",
+    "node-echarts": "^1.1.2",
     "pinyin": "^2.8.3"
   },
   "devDependencies": {
