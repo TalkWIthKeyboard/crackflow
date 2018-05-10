@@ -592,11 +592,18 @@ const mockGenerateResult = [
 ]
 
 const mockExtendsGenerateResult = [
+  { key: 'zyf11012137', value: 0.020833333333333332 },
   { key: 'zhengyifeng274667266', value: 0.020833333333333332 },
   { key: 'z6837605', value: 0.020833333333333332 },
   { key: 'xiaoxubisheng', value: 0.020833333333333332 },
   { key: 'dragonlyzq', value: 0.020833333333333332 },
   { key: 'chiwuchizu', value: 0.020833333333333332 },
+  { key: 'zyf911030', value: 0.015625 },
+  { key: 'zyf871126', value: 0.015625 },
+  { key: 'zhengyifeng588', value: 0.015625 },
+  { key: 'zyf165147', value: 0.010416666666666666 },
+  { key: 'zhengyifeng741', value: 0.010416666666666666 },
+  { key: 'zhengyifeng109', value: 0.010416666666666666 },
   { key: 'sn11012137', value: 0.010416666666666666 },
   { key: 'momozq_zyf', value: 0.010416666666666666 },
   { key: 'momozq', value: 0.010416666666666666 },
@@ -619,6 +626,8 @@ const mockExtendsGenerateResult = [
   { key: 'chitang', value: 0.008333333333333333 },
   { key: 'chenkan274667266', value: 0.008333333333333333 },
   { key: 'chenkan', value: 0.008333333333333333 },
+  { key: 'zhengyifeng911030', value: 0.0078125 },
+  { key: 'zhengyifeng871126', value: 0.0078125 },
   { key: 'lijingnan588', value: 0.0078125 },
   { key: 'chenming911030', value: 0.0078125 },
   { key: 'chenming871126', value: 0.0078125 },
@@ -628,6 +637,8 @@ const mockExtendsGenerateResult = [
   { key: 'tjl122106144', value: 0.006944444444444444 },
   { key: 'thw274667266', value: 0.006944444444444444 },
   { key: 'thw122106144', value: 0.006944444444444444 },
+  { key: 'zhengyifeng520', value: 0.005208333333333333 },
+  { key: 'zhengyifeng165147', value: 0.005208333333333333 },
   { key: 'lijingnan741', value: 0.005208333333333333 },
   { key: 'lijingnan109', value: 0.005208333333333333 },
   { key: 'chenming165147', value: 0.005208333333333333 },
@@ -724,6 +735,7 @@ test('Extends password generate', async t => {
   await pcfg.extendPasswordGenerator(mockPwds[0].userInfo)
   const topResult = await zrevrange(REDIS_PWD_COUNT_KEY, 0, -1, 'WITHSCORES')
   // extends 求和不一定等于1
+  console.log(topResult)
   t.deepEqual(mockExtendsGenerateResult, topResult)
 })
 

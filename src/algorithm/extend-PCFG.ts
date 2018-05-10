@@ -3,7 +3,7 @@ import * as _ from 'lodash'
 import PCFG from './basic-PCFG'
 import { PwdCount, UserInfo } from './interface'
 
-export default class extendPCFG extends PCFG {
+export default class ExtendPCFG extends PCFG {
   constructor(
     pwds: PwdCount[],
     userInfoUsefulFeature?: string[],
