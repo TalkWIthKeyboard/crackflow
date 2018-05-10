@@ -21,7 +21,7 @@ export async function parserZrevrange(
   const list = await redisClient.zrevrange(key, start, stop, withScore)
   const result: RangeResult[] = []
   for (let index = 0; index < list.length; index += 2) {
-    result.push({ key: list[index], value: parseInt(list[index + 1]) })
+    result.push({ key: list[index], value: parseFloat(list[index + 1]) })
   }
   return result
 }
