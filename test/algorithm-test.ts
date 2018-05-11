@@ -10,7 +10,6 @@ const REDIS_PWD_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:probability'
 const REDIS_PCFG_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:count'
 const REDIS_FRAGMET_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:*'
 const REDIS_TRANSFER_PROBABILITY_KEY = 'crackflow-test:markov:*'
-const REDIS_BEGIN_KEY = 'crackflow-test:markov:begin'
 const REDIS_PWD_PROBABILITY_KEY = 'crackflow-test:markov:probability'
 
 const mockPwds = [{
@@ -708,14 +707,14 @@ const mockMarkovTwoLevelTrainTop10 = [
   'z6837~',
   'cp165144~',
   'zhengyifeng910504~',
-  'zyf870504~'
+  'zyf870504~',
 ]
 
 // 清空所有的 test 缓存
 test.beforeEach(async () => {
   const removeKeys = _.flatten(await Promise.all([
     redisClient.keys(REDIS_TRANSFER_PROBABILITY_KEY),
-    redisClient.keys(REDIS_FRAGMET_COUNT_KEY)
+    redisClient.keys(REDIS_FRAGMET_COUNT_KEY),
   ]))
   if (removeKeys.length > 0) {
     await redisClient.del(...removeKeys)
@@ -764,10 +763,10 @@ test('Extends markov train (endSymbol & userInfo)', async t => {
   await markov.passwordGenerator()
   const top = await zrevrange(REDIS_PWD_PROBABILITY_KEY, 0, -1, 'WITHSCORES')
   const total = _.reduce(
-    _.map(top, t => t.value), 
+    _.map(top, topUnit => topUnit.value),
     (sum, n) => {
       return sum + n
-    }, 
+    },
     0
   )
   t.is(1 - total < 0.00001, true)
@@ -785,7 +784,7 @@ test('Extends markov generate password (endSymbol & userInfo)', async t => {
 test.afterEach(async () => {
   const removeKeys = _.flatten(await Promise.all([
     redisClient.keys(REDIS_TRANSFER_PROBABILITY_KEY),
-    redisClient.keys(REDIS_FRAGMET_COUNT_KEY)
+    redisClient.keys(REDIS_FRAGMET_COUNT_KEY),
   ]))
   if (removeKeys.length > 0) {
     await redisClient.del(...removeKeys)

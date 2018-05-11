@@ -1,5 +1,4 @@
 import * as _ from 'lodash'
-import * as Promise from 'bluebird'
 
 import redisClient from '../modules/redis-client'
 import { PwdCount, UserInfo } from './interface'
@@ -37,21 +36,21 @@ const defaultUserInfoType = {
 
 export default class Markov {
   // 阶数
-  private _level: number
+  private readonly _level: number
   // 密码,用户信息
-  private _pwds: PwdCount[]
+  private readonly _pwds: PwdCount[]
   // 用户信息特征
-  private _userInfoType: Object
+  private readonly _userInfoType: Object
   // 填充值到用户信息特征的映射
-  private _typeToUserInfokey: Object
+  private readonly _typeToUserInfokey: Object
   // 没用的用户信息特征
-  private _unusefulFeature: string[]
+  private readonly _unusefulFeature: string[]
   // 用于临时存储替换后的密码串
   private _temReplacePwdList: string[]
   // 用于临时存储起始密码的Set
   private _temBeginWordSet: {}
   // 是否启用拓展用户信息的模式
-  private _isIncludeUserInfo: boolean
+  private readonly _isIncludeUserInfo: boolean
   // 用户临时存储填充以后的密码
   private _temFilledPwdList: string[]
 
@@ -60,7 +59,7 @@ export default class Markov {
     pwds: PwdCount[],
     level: number = 1,
     userInfoType: Object = defaultUserInfoType,
-    unusefulFeature: string[] = defaultUnusefulFeature,
+    unusefulFeature: string[] = defaultUnusefulFeature
   ) {
     this._isIncludeUserInfo = isIncludeUserInfo
     this._level = level
@@ -104,13 +103,13 @@ export default class Markov {
     beforeUnit: string,
     thisUnit: string,
     num: number,
-    count: number,
+    count: number
   ) {
     if (index >= pwd.length) {
       return
     }
     let char = pwd[index]
-    let nextIndex = index  + 1
+    let nextIndex = index + 1
     if (char === '「') {
       while (pwd[nextIndex] !== '」') {
         char += pwd[nextIndex]
@@ -128,16 +127,16 @@ export default class Markov {
           redisClient.zincrby(
             REDIS_BEGIN_KEY,
             count,
-            newThisUnit,
+            newThisUnit
           )
           this._temBeginWordSet[newThisUnit] = true
         }
         this._search(
-          nextIndex, 
-          pwd, 
-          newThisUnit.split('，').slice(1).join('，'), 
-          '', 
-          0, 
+          nextIndex,
+          pwd,
+          newThisUnit.split('，').slice(1).join('，'),
+          '',
+          0,
           count
         )
         return
@@ -159,16 +158,16 @@ export default class Markov {
 
   /**
    * 将密码中的个人信息替换成合法的元素
-   * @param index 
-   * @param pwd 
-   * @param userInfo 
-   * @param replacedPwd 
+   * @param index
+   * @param pwd
+   * @param userInfo
+   * @param replacedPwd
    */
   private _replacePasswordCode(
     index: number,
     pwd: string,
     userInfo: UserInfo,
-    replacedPwd: string,
+    replacedPwd: string
   ) {
     if (index >= pwd.length) {
       this._temReplacePwdList.push(replacedPwd)
@@ -183,7 +182,7 @@ export default class Markov {
               index + userInfoValue.length,
               pwd,
               userInfo,
-              replacedPwd + this._userInfoType[userInfoKey],
+              replacedPwd + this._userInfoType[userInfoKey]
             )
           }
           break
@@ -194,7 +193,7 @@ export default class Markov {
                 index + userInfoUnit.length,
                 pwd,
                 userInfo,
-                replacedPwd + this._userInfoType[userInfoKey],
+                replacedPwd + this._userInfoType[userInfoKey]
               )
             }
           }
@@ -214,13 +213,13 @@ export default class Markov {
   private async _passwordGenerate(
     beforeUnit: string,
     pwd: string,
-    probability: number,
+    probability: number
   ) {
     const alternative = beforeUnit === ''
       ? await zrevrange(REDIS_BEGIN_KEY, 0, -1, 'WITHSCORES')
       : await zrevrange(REDIS_TRANSFER_PROBABILITY_KEY.replace(/{{word}}/, beforeUnit), 0, -1, 'WITHSCORES')
     const total = _.reduce(
-      _.map(alternative, a => a.value), 
+      _.map(alternative, a => a.value),
       function (sum, n) {
         return sum + n
       },
@@ -233,10 +232,10 @@ export default class Markov {
         redisClient.zadd(REDIS_PWD_PROBABILITY_KEY, newProbability.toString(), newPwd.replace(/，/g, ''))
       } else {
         await this._passwordGenerate(
-          beforeUnit === '' 
-            ? unit.key.split('，').slice(1).join('，') 
-            : unit.key, 
-          newPwd, 
+          beforeUnit === ''
+            ? unit.key.split('，').slice(1).join('，')
+            : unit.key,
+          newPwd,
           newProbability
         )
       }
@@ -245,16 +244,16 @@ export default class Markov {
 
   /**
    * 深度优先填充用户信息
-   * @param index 
-   * @param pwd 
-   * @param matchList 
-   * @param userInfo 
+   * @param index
+   * @param pwd
+   * @param matchList
+   * @param userInfo
    */
   private _searchFill(
     index: number,
     pwd: string,
     matchList: string[],
-    userInfo: UserInfo,
+    userInfo: UserInfo
   ) {
     if (index >= matchList.length) {
       this._temFilledPwdList.push(pwd)
@@ -268,7 +267,7 @@ export default class Markov {
           index + 1,
           pwd.replace(new RegExp(matchString, 'g'), info),
           matchList,
-          userInfo,
+          userInfo
         )
         break
       case 'object':
@@ -277,19 +276,20 @@ export default class Markov {
             index + 1,
             pwd.replace(new RegExp(matchString, 'g'), unit),
             matchList,
-            userInfo,
+            userInfo
           )
         }
+        break
       default:
     }
   }
-  
+
   /**
    * 训练转移矩阵和起始词概率
    * @param isEndSymbol           是否启用 end-symbol 标准化算法
    */
   public train(
-    isEndSymbol: boolean,
+    isEndSymbol: boolean
   ) {
     for (const pwd of this._pwds) {
       if (isEndSymbol) {
@@ -318,7 +318,7 @@ export default class Markov {
    */
   public async fillUserInfo(
     userInfo: UserInfo,
-    top?: number,
+    top?: number
   ) {
     const structures = await redisClient.zrevrange(REDIS_PWD_PROBABILITY_KEY, 0, -1)
     this._temFilledPwdList = []
@@ -330,8 +330,8 @@ export default class Markov {
         this._temFilledPwdList.push(structure)
       }
     })
-    return top 
-      ? this._temFilledPwdList.slice(0, top) 
+    return top
+      ? this._temFilledPwdList.slice(0, top)
       : this._temFilledPwdList
   }
 }
