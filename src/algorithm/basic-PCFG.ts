@@ -12,7 +12,7 @@ const REDIS_FRAGMET_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:{{name}}:pcfg
 // sortedset { pwd: probability }
 const REDIS_PWD_PROBABILITY_KEY = `crackflow-${process.env.NODE_ENV}:{{name}}:pcfg:probability`
 
-const defaultUsefulFeature = [
+const defaultUnusefulFeature = [
   'mobileTotle',
   'mobileLastFive',
   'birthdaySix',
@@ -53,8 +53,8 @@ export default class PCFG {
   protected _pwds: PwdCount[]
   // PCFG的拓展算法名（子类完成）
   protected _name: string
-  // UserInfo里在PCFG中有用的特征
-  protected _userInfoUsefulFeature: string[]
+  // UserInfo里在PCFG中有无用的特征
+  protected _userInfoUnusefulFeature: string[]
   // 基础的PCFG特征
   protected _basicType: Object
   // UserInfo扩展出来的PCFG特征
@@ -64,12 +64,12 @@ export default class PCFG {
 
   constructor(
     pwds: PwdCount[],
-    userInfoUsefulFeature: string[] = defaultUsefulFeature,
+    userInfoUnusefulFeature: string[] = defaultUnusefulFeature,
     basicType: Object = defaultBasicType,
     userInfoType: Object = defaultUserInfoType
   ) {
     this._pwds = pwds
-    this._userInfoUsefulFeature = userInfoUsefulFeature
+    this._userInfoUnusefulFeature = userInfoUnusefulFeature
     this._basicType = basicType
     this._userInfoType = userInfoType
     this._typeToUserInfo = _.invert(userInfoType)
@@ -359,7 +359,7 @@ export default class PCFG {
         pwd.count,
         basicGenerator
           ? undefined
-          : _.omit(pwd.userInfo, ...this._userInfoUsefulFeature)
+          : _.omit(pwd.userInfo, ...this._userInfoUnusefulFeature)
       )
     })
   }
