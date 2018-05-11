@@ -3,11 +3,15 @@ import * as _ from 'lodash'
 
 import ExtendPCFG from '../src/algorithm/extend-PCFG'
 import redisClient from '../src/modules/redis-client'
+import Markov from '../src/algorithm/extend-markov'
 import { parserZrevrange as zrevrange } from '../src/utils'
 
 const REDIS_PWD_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:probability'
 const REDIS_PCFG_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:count'
 const REDIS_FRAGMET_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:*'
+const REDIS_TRANSFER_PROBABILITY_KEY = 'crackflow-test:markov:*'
+const REDIS_BEGIN_KEY = 'crackflow-test:markov:begin'
+const REDIS_PWD_PROBABILITY_KEY = 'crackflow-test:markov:probability'
 
 const mockPwds = [{
   code: 'z6837605',
@@ -694,9 +698,25 @@ const mockExtendsGenerateResult = [
   { key: 'chenkan520', value: 0.0015625 },
 ]
 
+const mockMarkovTwoLevelTrainTop10 = [
+  'zhengyifeng274667266~',
+  'zhengyifeng741~',
+  'zhengyifeng588~',
+  'zyf165147~',
+  'z6837605~',
+  'chiwuchizu~',
+  'z6837~',
+  'cp165144~',
+  'zhengyifeng910504~',
+  'zyf870504~'
+]
+
 // 清空所有的 test 缓存
 test.beforeEach(async () => {
-  const removeKeys = await redisClient.keys(REDIS_FRAGMET_COUNT_KEY)
+  const removeKeys = _.flatten(await Promise.all([
+    redisClient.keys(REDIS_TRANSFER_PROBABILITY_KEY),
+    redisClient.keys(REDIS_FRAGMET_COUNT_KEY)
+  ]))
   if (removeKeys.length > 0) {
     await redisClient.del(...removeKeys)
   }
@@ -735,12 +755,39 @@ test('Extends password generate', async t => {
   await pcfg.extendPasswordGenerator(mockPwds[0].userInfo)
   const topResult = await zrevrange(REDIS_PWD_COUNT_KEY, 0, -1, 'WITHSCORES')
   // extends 求和不一定等于1
-  console.log(topResult)
   t.deepEqual(mockExtendsGenerateResult, topResult)
+})
+
+test('Extends markov train (endSymbol & userInfo)', async t => {
+  const markov = new Markov(true, mockPwds, 2)
+  markov.train(true)
+  await markov.passwordGenerator()
+  const top = await zrevrange(REDIS_PWD_PROBABILITY_KEY, 0, -1, 'WITHSCORES')
+  const total = _.reduce(
+    _.map(top, t => t.value), 
+    (sum, n) => {
+      return sum + n
+    }, 
+    0
+  )
+  t.is(1 - total < 0.00001, true)
+})
+
+test('Extends markov generate password (endSymbol & userInfo)', async t => {
+  const markov = new Markov(true, mockPwds, 2)
+  markov.train(true)
+  await markov.passwordGenerator()
+  const pwds = await markov.fillUserInfo(mockPwds[0].userInfo, 10)
+  t.deepEqual(pwds, mockMarkovTwoLevelTrainTop10)
 })
 
 // 清空所有的 test 缓存
 test.afterEach(async () => {
-  const removeKeys = await redisClient.keys(REDIS_FRAGMET_COUNT_KEY)
-  await redisClient.del(...removeKeys)
+  const removeKeys = _.flatten(await Promise.all([
+    redisClient.keys(REDIS_TRANSFER_PROBABILITY_KEY),
+    redisClient.keys(REDIS_FRAGMET_COUNT_KEY)
+  ]))
+  if (removeKeys.length > 0) {
+    await redisClient.del(...removeKeys)
+  }
 })
