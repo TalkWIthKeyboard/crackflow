@@ -1,18 +1,18 @@
 import test from 'ava'
 import * as _ from 'lodash'
 
-import ExtendPCFG from '../src/algorithm/extend-PCFG'
+import PCFG from '../src/algorithm/PCFG'
 import redisClient from '../src/modules/redis-client'
-import Markov from '../src/algorithm/extend-markov'
+import Markov from '../src/algorithm/Markov'
 import MarkovPCFG from '../src/algorithm/markov-PCFG'
 import { parserZrevrange as zrevrange } from '../src/utils'
 
-const REDIS_FRAGMET_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:*'
+const REDIS_FRAGMET_COUNT_KEY = 'crackflow-test:pcfg:*'
 const REDIS_TRANSFER_PROBABILITY_KEY = 'crackflow-test:markov:*'
 const REDIS_MARKOV_PCFG_ALL_KEY = 'crackflow-test:markov-pcfg:*'
 
-const REDIS_PWD_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:probability'
-const REDIS_PCFG_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:count'
+const REDIS_PWD_COUNT_KEY = 'crackflow-test:pcfg:probability'
+const REDIS_PCFG_COUNT_KEY = 'crackflow-test:pcfg:count'
 const REDIS_PWD_PROBABILITY_KEY = 'crackflow-test:markov:probability'
 const REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY = 'crackflow-test:markov-pcfg:probability'
 
@@ -764,21 +764,21 @@ test.beforeEach(async () => {
 })
 
 test('Extends pcfg statistic', async t => {
-  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  const pcfg = new PCFG(_.cloneDeep(mockPwds))
   pcfg.train(false)
   const topTen = await redisClient.zrevrange(REDIS_PCFG_COUNT_KEY, 0, 10, 'WITHSCORES')
   t.deepEqual(mockExtendsResult, topTen)
 })
 
 test('Basic pcfg statistic', async t => {
-  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  const pcfg = new PCFG(_.cloneDeep(mockPwds))
   pcfg.train(true)
   const topTen = await redisClient.zrevrange(REDIS_PCFG_COUNT_KEY, 0, 10, 'WITHSCORES')
   t.deepEqual(mockBasicResult, topTen)
 })
 
 test('Basic password generate', async t => {
-  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  const pcfg = new PCFG(_.cloneDeep(mockPwds))
   pcfg.train(true)
   await pcfg.basicPasswordGenerator()
   const top = await zrevrange(REDIS_PWD_COUNT_KEY, 0, -1, 'WITHSCORES')
@@ -791,7 +791,7 @@ test('Basic password generate', async t => {
 })
 
 test('Extends password generate', async t => {
-  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  const pcfg = new PCFG(_.cloneDeep(mockPwds))
   pcfg.train(false)
   await pcfg.extendPasswordGenerator(_.cloneDeep(mockPwds)[0].userInfo)
   const topResult = await zrevrange(REDIS_PWD_COUNT_KEY, 0, -1, 'WITHSCORES')
@@ -825,9 +825,9 @@ test('Extends markov generate password (endSymbol & userInfo)', async t => {
 test('Merge markov and PCFG generate password (endSymbol & userInfo)', async t => {
   const markov = new Markov(true, _.cloneDeep(mockPwds), 2)
   markov.train(true)
-  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  const pcfg = new PCFG(_.cloneDeep(mockPwds))
   pcfg.train(false)
-  const markovPCFG = new MarkovPCFG(pcfg.name, markov.level)
+  const markovPCFG = new MarkovPCFG(markov.level)
   await markovPCFG.generatePwd()
   const result = await zrevrange(REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY, 0, 20, 'WITHSCORES')
   t.deepEqual(result, mockMarkovPCFGTrainTop20)
@@ -836,9 +836,9 @@ test('Merge markov and PCFG generate password (endSymbol & userInfo)', async t =
 test('Merge markov and PCFG generate userInfo password (endSymbol & userInfo)', async t => {
   const markov = new Markov(true, _.cloneDeep(mockPwds), 2)
   markov.train(false)
-  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  const pcfg = new PCFG(_.cloneDeep(mockPwds))
   pcfg.train(false)
-  const markovPCFG = new MarkovPCFG(pcfg.name, 2)
+  const markovPCFG = new MarkovPCFG(markov.level)
   await markovPCFG.generatePwd()
   const pwds = await markovPCFG.fillUserInfo(_.cloneDeep(mockPwds)[0].userInfo, 10)
   t.deepEqual(pwds, mockMarkovPCFGUserInfoPasswordTop10)

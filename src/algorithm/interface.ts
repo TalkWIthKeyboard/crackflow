@@ -27,3 +27,13 @@ export interface AnalyzerResult {
   length: number
   type: string
 }
+
+export interface RangeResult {
+  key: string
+  value: number
+}
+
+export interface PCFGUnit {
+  type: string,
+  num?: number
+}

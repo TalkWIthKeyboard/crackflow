@@ -3,14 +3,14 @@ import * as Promise from 'bluebird'
 
 import redisClient from '../modules/redis-client'
 import { parserZrevrange as zrevrange } from '../utils'
-import { PwdCount, UserInfo } from './interface'
+import { PwdCount, UserInfo, RangeResult } from './interface'
 
 // sortedset { structure: count }
-const REDIS_PCFG_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:{{name}}:pcfg:count`
+const REDIS_PCFG_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:pcfg:count`
 // sortedset { fragmet: count }, {{type}} -> A/B/C, {{number}} -> 碎片的长度
-const REDIS_FRAGMET_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:{{name}}:pcfg:{{type}}:{{number}}`
+const REDIS_FRAGMET_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:pcfg:{{type}}:{{number}}`
 // sortedset { pwd: probability }
-const REDIS_PWD_PROBABILITY_KEY = `crackflow-${process.env.NODE_ENV}:{{name}}:pcfg:probability`
+const REDIS_PWD_PROBABILITY_KEY = `crackflow-${process.env.NODE_ENV}:pcfg:probability`
 
 const defaultUnusefulFeature = [
   'mobileTotle',
@@ -41,11 +41,6 @@ const defaultBasicType = {
   LOWER_CHAR_TYPE: 'B',
   UPPER_CHAR_TYPE: 'C',
   MARK_TYPE: 'D',
-}
-
-interface RangeResult {
-  key: string
-  value: number
 }
 
 export default class PCFG {
@@ -97,6 +92,44 @@ export default class PCFG {
   }
 
   /**
+   * 向后嗅探到第一个类型不为type的位置
+   * @param pwd
+   * @param index
+   * @param type
+   */
+  private _basicTypeTowardEnd(
+    pwd: string,
+    index: number,
+    type: string
+  ): number {
+    for (let i = index; i < pwd.length; i += 1) {
+      if (this._charTypeof(pwd[i]) !== type) {
+        return i
+      }
+    }
+    return pwd.length
+  }
+
+  /**
+   * pwd片段是否于userInfo匹配
+   * @param pwd
+   * @param index
+   * @param userInfo
+   */
+  private _isMatchUserInfo(
+    pwd: string,
+    index: number,
+    userInfo: string
+  ) {
+    const userInfoLength = userInfo.length
+    if (index + userInfoLength > pwd.length) {
+      return false
+    }
+    const pwdFragmet = pwd.slice(index, index + userInfoLength)
+    return pwdFragmet === userInfo
+  }
+
+  /**
    * 向后嗅探（子类完成）
    * @param pwd         密码
    * @param index       现在搜索的位置下标
@@ -106,8 +139,62 @@ export default class PCFG {
    * @param count       总量
    * @param userInfo    用户信息
    */
-  // tslint:disable-next-line
-  protected _extends(pwd: string, index: number, result: string, count: number, userInfo?: UserInfo) { }
+  protected _search(
+    pwd: string,
+    index: number,
+    result: string,
+    count: number,
+    userInfo?: UserInfo
+  ) {
+    if (index >= pwd.length) {
+      this._saveStructure(result, count)
+      return
+    }
+    const charType = this._charTypeof(pwd[index])
+    // 基础PCFG
+    const nextIndex = this._basicTypeTowardEnd(pwd, index, charType)
+    this._saveFragmet(pwd.slice(index, nextIndex), charType, nextIndex - index, count)
+    this._search(
+      pwd,
+      nextIndex,
+      index === 0 ? `${charType}/${nextIndex - index}` : `${result},${charType}/${nextIndex - index}`,
+      count,
+      userInfo
+    )
+    // 拓展PCFG
+    if (userInfo) {
+      _.each(_.keys(this._userInfoType), userInfoKey => {
+        const userInfoValue = userInfo[userInfoKey]
+        switch (typeof userInfoValue) {
+          case 'string':
+            if (this._isMatchUserInfo(pwd, index, userInfoValue)) {
+              this._search(
+                pwd,
+                index + userInfoValue.length,
+                index === 0 ? this._userInfoType[userInfoKey] : `${result},${this._userInfoType[userInfoKey]}`,
+                count,
+                userInfo
+              )
+            }
+            break
+          case 'object':
+            for (const userInfoUnit of userInfoValue) {
+              if (this._isMatchUserInfo(pwd, index, userInfoUnit)) {
+                this._search(
+                  pwd,
+                  index + userInfoUnit.length,
+                  index === 0 ? this._userInfoType[userInfoKey] : `${result},${this._userInfoType[userInfoKey]}`,
+                  count,
+                  userInfo
+                )
+              }
+            }
+            break
+          default:
+        }
+      })
+    }
+  }
 
   /**
    * 保存中间碎片结果
@@ -352,7 +439,7 @@ export default class PCFG {
    */
   public train(basicGenerator: boolean) {
     _.each(this._pwds, pwd => {
-      this._extends(
+      this._search(
         pwd.code,
         0,
         '',

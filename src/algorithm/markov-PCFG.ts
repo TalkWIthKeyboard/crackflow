@@ -2,10 +2,10 @@ import * as _ from 'lodash'
 
 import redisClient from '../modules/redis-client'
 import { parserZrevrange as zrevrange } from '../utils'
-import { UserInfo } from './interface'
+import { UserInfo, PCFGUnit, RangeResult } from './interface'
 
 // sortedset { structure: count }
-const REDIS_PCFG_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:{{name}}:pcfg:count`
+const REDIS_PCFG_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:pcfg:count`
 // sortedset { pwd: probability }
 const REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY = `crackflow-${process.env.NODE_ENV}:markov-pcfg:probability`
 // sortedset  记录 word -> any 的转移概率
@@ -45,16 +45,6 @@ const defaultBasicType = {
   MARK_TYPE: 'D',
 }
 
-interface RangeResult {
-  key: string
-  value: number
-}
-
-interface PCFGUnit {
-  type: string,
-  num?: number
-}
-
 /**
  * 仅考虑1阶段
  */
@@ -76,13 +66,11 @@ export default class MarkovPCFG {
   private readonly _typeToUserInfokey: Object
 
   constructor(
-    pcfgType: string,
     level: number,
     basicType: Object = defaultBasicType,
     userInfoType: Object = defaultUserInfoType,
     pcfgTypeToMarkovType: Object = defaultPCFGTypeToMarkovType
   ) {
-    this._pcfgType = pcfgType
     this._basicType = basicType
     this._basicTypeList = _.keys(_.invert(basicType))
     this._level = level
