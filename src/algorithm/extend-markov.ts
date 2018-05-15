@@ -69,6 +69,10 @@ export default class Markov {
     this._typeToUserInfokey = _.invert(userInfoType)
   }
 
+  get level(): number {
+    return this._level
+  }
+
   /**
    * pwd片段是否于userInfo匹配
    * @param pwd
@@ -93,7 +97,7 @@ export default class Markov {
    * @param index         搜索下标
    * @param pwd           密码
    * @param beforeUnit    前一个单元
-   * @param thisUnit      后一个单元
+   * @param thisUnit      这一个单元（用来处理BeginUnit）
    * @param num           单元中字符个数
    * @param count         密码出现次数
    */
@@ -103,6 +107,7 @@ export default class Markov {
     beforeUnit: string,
     thisUnit: string,
     num: number,
+    isBeginUnit: boolean,
     count: number
   ) {
     if (index >= pwd.length) {
@@ -119,7 +124,7 @@ export default class Markov {
       nextIndex += 1
     }
     const newThisUnit = thisUnit !== '' ? `${thisUnit}，${char}` : char
-    if (beforeUnit === '') {
+    if (isBeginUnit) {
       // 进行起始词的记录
       if (num + 1 === this._level + 1) {
         // 平衡繁生多个code的pwd和1个code的pwd的权重
@@ -127,33 +132,31 @@ export default class Markov {
           redisClient.zincrby(
             REDIS_BEGIN_KEY,
             count,
-            newThisUnit
+            newThisUnit.replace(/，¥/g, '')
           )
           this._temBeginWordSet[newThisUnit] = true
         }
-        this._search(
-          nextIndex,
-          pwd,
-          newThisUnit.split('，').slice(1).join('，'),
-          '',
-          0,
-          count
-        )
-        return
+        this._search(nextIndex, pwd, newThisUnit.split('，').slice(1).join('，'), '', 0, !isBeginUnit, count)
+      } else {
+        this._search(nextIndex, pwd, beforeUnit, newThisUnit, num + 1, isBeginUnit, count)
       }
     } else {
       // 进行转移概率的记录
-      if (num + 1 === this._level || newThisUnit.includes('~')) {
-        redisClient.zincrby(
-          REDIS_TRANSFER_PROBABILITY_KEY.replace(/{{word}}/, beforeUnit),
-          count,
-          newThisUnit
-        )
-        this._search(nextIndex, pwd, newThisUnit, '', 0, count)
-        return
-      }
+      redisClient.zincrby(
+        REDIS_TRANSFER_PROBABILITY_KEY.replace(/{{word}}/, beforeUnit),
+        count,
+        char
+      )
+      this._search(
+        nextIndex,
+        pwd,
+        beforeUnit.split('，').slice(1).join('，') + (beforeUnit.split('，').length > 1 ?  `，${char}` : char),
+        thisUnit,
+        num,
+        isBeginUnit,
+        count
+      )
     }
-    this._search(nextIndex, pwd, beforeUnit, newThisUnit, num + 1, count)
   }
 
   /**
@@ -205,7 +208,7 @@ export default class Markov {
   }
 
   /**
-   * 深度优先便利生成密码
+   * 深度优先遍历生成密码
    * @param beforeUnit     上一个单元
    * @param pwd            现构成的密码
    * @param probability    现构成密码的可能性
@@ -213,8 +216,12 @@ export default class Markov {
   private async _passwordGenerate(
     beforeUnit: string,
     pwd: string,
-    probability: number
+    probability: number,
+    num: number
   ) {
+    if (num > 20) {
+      return
+    }
     const alternative = beforeUnit === ''
       ? await zrevrange(REDIS_BEGIN_KEY, 0, -1, 'WITHSCORES')
       : await zrevrange(REDIS_TRANSFER_PROBABILITY_KEY.replace(/{{word}}/, beforeUnit), 0, -1, 'WITHSCORES')
@@ -228,15 +235,17 @@ export default class Markov {
     for (const unit of alternative) {
       const newPwd = pwd + unit.key
       const newProbability = probability * (unit.value / total)
-      if (_.last(newPwd) === '~') {
+      if (_.last(newPwd) === '¥') {
         redisClient.zadd(REDIS_PWD_PROBABILITY_KEY, newProbability.toString(), newPwd.replace(/，/g, ''))
       } else {
         await this._passwordGenerate(
           beforeUnit === ''
             ? unit.key.split('，').slice(1).join('，')
-            : unit.key,
+            : beforeUnit.split('，').slice(1).join('，')
+              + (beforeUnit.split('，').length > 1 ? `，${unit.key}` : unit.key),
           newPwd,
-          newProbability
+          newProbability,
+          num + 1
         )
       }
     }
@@ -293,7 +302,7 @@ export default class Markov {
   ) {
     for (const pwd of this._pwds) {
       if (isEndSymbol) {
-        pwd.code += '~'
+        pwd.code += '¥'
       }
       this._temReplacePwdList = []
       this._temBeginWordSet = {}
@@ -301,7 +310,7 @@ export default class Markov {
         this._replacePasswordCode(0, pwd.code, _.omit(pwd.userInfo!, ...this._unusefulFeature), '')
       }
       for (const code of this._temReplacePwdList) {
-        this._search(0, code, '', '', 0, pwd.count)
+        this._search(0, code, '', '', 0, true, pwd.count)
       }
     }
   }
@@ -310,7 +319,7 @@ export default class Markov {
    * 密码生成
    */
   public async passwordGenerator() {
-    await this._passwordGenerate('', '', 1)
+    await this._passwordGenerate('', '', 1, 0)
   }
 
   /**

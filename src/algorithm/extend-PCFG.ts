@@ -14,6 +14,10 @@ export default class ExtendPCFG extends PCFG {
     this._name = 'EXTEND'
   }
 
+  get name(): string {
+    return this._name
+  }
+
   /**
    * 向后嗅探到第一个类型不为type的位置
    * @param pwd
