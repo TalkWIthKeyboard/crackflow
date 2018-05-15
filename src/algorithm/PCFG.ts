@@ -1,80 +1,29 @@
 import * as _ from 'lodash'
 import * as Promise from 'bluebird'
 
+import Basic from './basic'
 import redisClient from '../modules/redis-client'
 import { parserZrevrange as zrevrange } from '../utils'
 import { PwdCount, UserInfo, RangeResult } from './interface'
+import { defaultUserInfoMarkovType, keys } from './default'
 
-// sortedset { structure: count }
-const REDIS_PCFG_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:pcfg:count`
-// sortedset { fragmet: count }, {{type}} -> A/B/C, {{number}} -> 碎片的长度
-const REDIS_FRAGMET_COUNT_KEY = `crackflow-${process.env.NODE_ENV}:pcfg:{{type}}:{{number}}`
-// sortedset { pwd: probability }
-const REDIS_PWD_PROBABILITY_KEY = `crackflow-${process.env.NODE_ENV}:pcfg:probability`
-
-const defaultUnusefulFeature = [
-  'mobileTotle',
-  'mobileLastFive',
-  'birthdaySix',
-  'birthdayEight',
-  'ctfIdLastFour',
-  'ctfIdLastFive',
-  'ctfIdLastSix',
-  'mobileTotle',
-]
-
-const defaultUserInfoType = {
-  mobileLastFour: 'E',
-  mobileLastSix: 'F',
-  birthdayFour: 'G',
-  usernameNumberFragmet: 'H',
-  usernameStringFragmet: 'I',
-  emailNumberFragmet: 'J',
-  emailStringFragmet: 'K',
-  namePinyin: 'L',
-  namePinyinFirstLetter: 'M',
-}
-
-const defaultBasicType = {
-  INIT: '',
-  NUMBER_TYPE: 'A',
-  LOWER_CHAR_TYPE: 'B',
-  UPPER_CHAR_TYPE: 'C',
-  MARK_TYPE: 'D',
-}
-
-export default class PCFG {
-  // 密码
-  protected _pwds: PwdCount[]
-  // PCFG的拓展算法名（子类完成）
-  protected _name: string
-  // UserInfo里在PCFG中有无用的特征
-  protected _userInfoUnusefulFeature: string[]
-  // 基础的PCFG特征
-  protected _basicType: Object
-  // UserInfo扩展出来的PCFG特征
-  protected _userInfoType: Object
-  // 从type到userInfoKey的映射
-  protected _typeToUserInfo: Object
+export default class PCFG extends Basic {
+  private readonly _userInfoMarkovType: Object
 
   constructor(
+    isIncludeUserInfo: boolean,
     pwds: PwdCount[],
-    userInfoUnusefulFeature: string[] = defaultUnusefulFeature,
-    basicType: Object = defaultBasicType,
-    userInfoType: Object = defaultUserInfoType
+    userInfoMarkovType: Object = defaultUserInfoMarkovType
   ) {
-    this._pwds = pwds
-    this._userInfoUnusefulFeature = userInfoUnusefulFeature
-    this._basicType = basicType
-    this._userInfoType = userInfoType
-    this._typeToUserInfo = _.invert(userInfoType)
+    super('PCFG', isIncludeUserInfo, pwds)
+    this._userInfoMarkovType = userInfoMarkovType
   }
 
   /**
    * 对字符进行分类
    * @param char 字符
    */
-  protected _charTypeof(char: string): string {
+  private _charTypeof(char: string): string {
     if (_.get(char.match(/[a-z]*/), 0, '') !== '') {
       // tslint:disable-next-line
       return this._basicType['LOWER_CHAR_TYPE']
@@ -139,7 +88,7 @@ export default class PCFG {
    * @param count       总量
    * @param userInfo    用户信息
    */
-  protected _search(
+  private _search(
     pwd: string,
     index: number,
     result: string,
@@ -203,10 +152,9 @@ export default class PCFG {
    * @param length      长度
    * @param count       总个数
    */
-  protected _saveFragmet(fragmet: string, type: string, length: number, count: number) {
+  private _saveFragmet(fragmet: string, type: string, length: number, count: number) {
     redisClient.zincrby(
-      REDIS_FRAGMET_COUNT_KEY
-        .replace(/{{name}}/, this._name)
+      keys.REDIS_PCFG_FRAGMET_COUNT_KEY
         .replace(/{{type}}/, type)
         .replace(/{{number}}/, length.toString()),
       count,
@@ -219,9 +167,9 @@ export default class PCFG {
    * @param structure   最终结构
    * @param count       总个数
    */
-  protected _saveStructure(structure: string, count: number) {
+  private _saveStructure(structure: string, count: number) {
     redisClient.zincrby(
-      REDIS_PCFG_COUNT_KEY.replace(/{{name}}/, this._name),
+      keys.REDIS_PCFG_COUNT_KEY,
       count,
       structure
     )
@@ -248,8 +196,9 @@ export default class PCFG {
   ) {
     // 边界条件
     if (index >= typeNumberList.length) {
+      // console.log(pwd, typeNumberList)
       redisClient.zadd(
-        REDIS_PWD_PROBABILITY_KEY.replace(/{{name}}/, this._name),
+        keys.REDIS_PCFG_PWD_PROBABILITY_KEY,
         probability.toString(),
         pwd
       )
@@ -259,38 +208,20 @@ export default class PCFG {
     // tslint:disable-next-line
     const values: string[] = _.values(this._userInfoType) as any[]
     // 用户信息特征
-    if (values.includes(typeNumber.type) && userInfo) {
-      const userInfoValue = userInfo[this._typeToUserInfo[typeNumber.type]]
-      if (!userInfoValue || userInfoValue.length === 0) {
+    if (values.includes(typeNumber.type)) {
+      const userInfoValue = this._userInfoMarkovType[this._typeToUserInfo[typeNumber.type]]
+      if (!userInfoValue) {
         return
       }
-      switch (typeof userInfoValue) {
-        case 'string':
-          this._makeUpPassword(
-            index + 1,
-            basicIndex,
-            probability,
-            pwd + userInfoValue,
-            typeNumberList,
-            fragmetList,
-            userInfo
-          )
-          break
-        case 'object':
-          for (const userInfoUnit of userInfoValue) {
-            this._makeUpPassword(
-              index + 1,
-              basicIndex,
-              probability * (1 / userInfoValue.length),
-              pwd + userInfoUnit,
-              typeNumberList,
-              fragmetList,
-              userInfo
-            )
-          }
-          break
-        default:
-      }
+      this._makeUpPassword(
+        index + 1,
+        basicIndex,
+        probability,
+        pwd + userInfoValue,
+        typeNumberList,
+        fragmetList,
+        userInfo
+      )
     // 普通特征
     } else {
       const fragmetTotal = _.reduce(
@@ -317,13 +248,11 @@ export default class PCFG {
   /**
    * 基础密码生成模式中是否包含了用户信息类型
    * @param units              PCFG各单元
-   * @param basicGenerator     是否是基础密码生成模式
    */
   private _isBasicGeneratorIncludeUserInfoType(
-    units: string[],
-    basicGenerator: boolean
+    units: string[]
   ) {
-    if (!basicGenerator) {
+    if (this._isIncludeUserInfo) {
       return false
     }
     // tslint:disable-next-line
@@ -342,15 +271,14 @@ export default class PCFG {
    * @param basicGenerator      是否只对普通模式进行生成
    * @param userInfo            用户信息
    */
-  private async _passwordCount(
+  private async _passwordGenerate(
     count: number,
-    basicGenerator: boolean,
     structures: RangeResult[],
     userInfo?: UserInfo
   ) {
     for (const structure of structures) {
       const [...units] = structure.key.split(',')
-      if (this._isBasicGeneratorIncludeUserInfoType(units, basicGenerator)) {
+      if (this._isBasicGeneratorIncludeUserInfoType(units)) {
         continue
       }
       const typeNumberList = _.map(units, u => {
@@ -364,8 +292,7 @@ export default class PCFG {
       // todo 优化
       const fragmetList = await Promise.map(hasFragmetType, u => {
         return zrevrange(
-          REDIS_FRAGMET_COUNT_KEY
-            .replace(/{{name}}/, this._name)
+          keys.REDIS_PCFG_FRAGMET_COUNT_KEY
             .replace(/{{type}}/, u.type)
             .replace(/{{number}}/, u.num),
           0, -1, 'WITHSCORES'
@@ -380,13 +307,12 @@ export default class PCFG {
    * @param basicGenerator
    */
   private _calculatePasswordCount(
-    structures: RangeResult[],
-    basicGenerator: boolean
+    structures: RangeResult[]
   ): number {
     let sum = 0
     for (const structure of structures) {
       const [...units] = structure.key.split(',')
-      if (this._isBasicGeneratorIncludeUserInfoType(units, basicGenerator)) {
+      if (this._isBasicGeneratorIncludeUserInfoType(units)) {
         continue
       }
       sum += structure.value
@@ -394,59 +320,26 @@ export default class PCFG {
     return sum
   }
 
-  /**
-   * 普通密码生成模式
-   */
-  public async basicPasswordGenerator() {
-    const structures = await zrevrange(
-      REDIS_PCFG_COUNT_KEY.replace(/{{name}}/, this._name),
-      0,
-      -1,
-      'WITHSCORES'
-    )
-    await this._passwordCount(
-      this._calculatePasswordCount(structures, true),
-      true,
-      structures
-    )
+  public async passwordGenerate() {
+    const structures = await zrevrange(keys.REDIS_PCFG_COUNT_KEY, 0, -1, 'WITHSCORES')
+    await this._passwordGenerate(this._calculatePasswordCount(structures), structures)
   }
 
   /**
-   * 扩展密码生成模式
-   * @param count       密码总数
-   * @param userInfos   用户信息
-   */
-  public async extendPasswordGenerator(userInfo: UserInfo) {
-    const structures = await zrevrange(
-      REDIS_PCFG_COUNT_KEY.replace(/{{name}}/, this._name),
-      0,
-      -1,
-      'WITHSCORES'
-    )
-    await this._passwordCount(
-      this._calculatePasswordCount(structures, false),
-      false,
-      structures,
-      userInfo
-    )
-  }
-
-  /**
-   * 多进程的 basic-PCFG 算法的 Worker
+   * 多进程的 PCFG 算法的 Worker
    * 1. 因为中间过程只是简单的累加进行统计，所以全部做异步
    * 2. 这里只进行统计，不进行排序
-   * @param basicGenerator   是否是普通模式
    */
-  public train(basicGenerator: boolean) {
+  public train() {
     _.each(this._pwds, pwd => {
       this._search(
         pwd.code,
         0,
         '',
         pwd.count,
-        basicGenerator
-          ? undefined
-          : _.omit(pwd.userInfo, ...this._userInfoUnusefulFeature)
+        this._isIncludeUserInfo
+          ? _.omit(pwd.userInfo, ...this._userInfoUnusefulFeature)
+          : undefined
       )
     })
   }
