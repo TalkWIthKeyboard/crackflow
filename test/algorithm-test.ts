@@ -7,16 +7,16 @@ import Markov from '../src/algorithm/Markov'
 import MarkovPCFG from '../src/algorithm/markov-PCFG'
 import { parserZrevrange as zrevrange } from '../src/utils'
 
-const REDIS_FRAGMET_COUNT_KEY = 'crackflow-test:pcfg:*'
-const REDIS_TRANSFER_PROBABILITY_KEY = 'crackflow-test:markov:*'
+const REDIS_PCFG_ALL_KEY = 'crackflow-test:pcfg:*'
+const REDIS_MARKOV_ALL_KEY = 'crackflow-test:markov:*'
 const REDIS_MARKOV_PCFG_ALL_KEY = 'crackflow-test:markov-pcfg:*'
 
-const REDIS_PWD_COUNT_KEY = 'crackflow-test:pcfg:probability'
+const REDIS_PCFG_PWD_PROBABILITY_KEY = 'crackflow-test:pcfg:probability'
 const REDIS_PCFG_COUNT_KEY = 'crackflow-test:pcfg:count'
-const REDIS_PWD_PROBABILITY_KEY = 'crackflow-test:markov:probability'
+const REDIS_MARKOV_PWD_PROBABILITY_KEY = 'crackflow-test:markov:probability'
 const REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY = 'crackflow-test:markov-pcfg:probability'
 
-const mockPwds = [{
+const mockUserInfos = [{
   code: 'z6837605',
   userInfo:
     {
@@ -472,7 +472,7 @@ const mockPwds = [{
     count: 1,
   }]
 
-const mockExtendsResult = [
+const mockPcfgWithUserInfoStructrures = [
   'K,J',
   '3',
   'K',
@@ -497,7 +497,7 @@ const mockExtendsResult = [
   '2',
 ]
 
-const mockBasicResult = [
+const mockPcfgWithoutUserInfoStructrures = [
   'B/7,A/3',
   '3',
   'B/7',
@@ -522,7 +522,30 @@ const mockBasicResult = [
   '1',
 ]
 
-const mockGenerateResult = [
+const mockPcfgWithUserInfoPwdsTop20 = [
+  { key: '「ESF」「ENF」', value: 0.0625 },
+  { key: '「ESF」', value: 0.0625 },
+  { key: '「USF」「ENF」', value: 0.020833333333333332 },
+  { key: '「USF」122106144', value: 0.020833333333333332 },
+  { key: '「USF」11012137', value: 0.020833333333333332 },
+  { key: '「NP」「ENF」', value: 0.020833333333333332 },
+  { key: '「NPFL」11012137', value: 0.020833333333333332 },
+  { key: 'z「UNF」', value: 0.020833333333333332 },
+  { key: 'z6837605', value: 0.020833333333333332 },
+  { key: 'xiaoxubisheng', value: 0.020833333333333332 },
+  { key: 'dragonlyzq', value: 0.020833333333333332 },
+  { key: 'chiwuchizu', value: 0.020833333333333332 },
+  { key: '「ESF」2012', value: 0.016666666666666666 },
+  { key: '「ESF」1003', value: 0.016666666666666666 },
+  { key: '「NP」588', value: 0.015625 },
+  { key: '「NPFL」911030', value: 0.015625 },
+  { key: '「NPFL」871126', value: 0.015625 },
+  { key: '「ESF」588', value: 0.015625 },
+  { key: '「NP」741', value: 0.010416666666666666 },
+  { key: '「NP」109', value: 0.010416666666666666 },
+]
+
+const mockPcfgWithoutUserInfoPwdsTop20 = [
   { key: 'z6837605', value: 0.05 },
   { key: 'xiaoxubisheng', value: 0.05 },
   { key: 'dragonlyzq', value: 0.05 },
@@ -543,165 +566,32 @@ const mockGenerateResult = [
   { key: 'xujsh2012', value: 0.016666666666666666 },
   { key: 'xujsh1003', value: 0.016666666666666666 },
   { key: 'wzj122106144', value: 0.016666666666666666 },
-  { key: 'tjl122106144', value: 0.016666666666666666 },
-  { key: 'thw122106144', value: 0.016666666666666666 },
-  { key: 'daqi8612', value: 0.016666666666666666 },
-  { key: 'daqi2012', value: 0.016666666666666666 },
-  { key: 'daqi1003', value: 0.016666666666666666 },
-  { key: 'chenming911030', value: 0.016666666666666666 },
-  { key: 'chenming871126', value: 0.016666666666666666 },
-  { key: 'chenming165147', value: 0.016666666666666666 },
-  { key: 'lijingnan741', value: 0.0125 },
-  { key: 'lijingnan588', value: 0.0125 },
-  { key: 'lijingnan520', value: 0.0125 },
-  { key: 'lijingnan109', value: 0.0125 },
-  { key: 'sn911030', value: 0.008333333333333333 },
-  { key: 'sn871126', value: 0.008333333333333333 },
-  { key: 'sn165147', value: 0.008333333333333333 },
-  { key: 'momozq_wzj', value: 0.008333333333333333 },
-  { key: 'momozq_tjl', value: 0.008333333333333333 },
-  { key: 'momozq_thw', value: 0.008333333333333333 },
-  { key: 'cp911030', value: 0.008333333333333333 },
-  { key: 'cp871126', value: 0.008333333333333333 },
-  { key: 'cp165147', value: 0.008333333333333333 },
-  { key: 'anjing_wzj', value: 0.008333333333333333 },
-  { key: 'anjing_tjl', value: 0.008333333333333333 },
-  { key: 'anjing_thw', value: 0.008333333333333333 },
-  { key: 'swlangg741', value: 0.0075 },
-  { key: 'swlangg588', value: 0.0075 },
-  { key: 'swlangg520', value: 0.0075 },
-  { key: 'swlangg109', value: 0.0075 },
-  { key: 'kangjie741', value: 0.0075 },
-  { key: 'kangjie588', value: 0.0075 },
-  { key: 'kangjie520', value: 0.0075 },
-  { key: 'kangjie109', value: 0.0075 },
-  { key: 'jdnetyf741', value: 0.0075 },
-  { key: 'jdnetyf588', value: 0.0075 },
-  { key: 'jdnetyf520', value: 0.0075 },
-  { key: 'jdnetyf109', value: 0.0075 },
-  { key: 'chitang741', value: 0.0075 },
-  { key: 'chitang588', value: 0.0075 },
-  { key: 'chitang520', value: 0.0075 },
-  { key: 'chitang109', value: 0.0075 },
-  { key: 'chenkan741', value: 0.0075 },
-  { key: 'chenkan588', value: 0.0075 },
-  { key: 'chenkan520', value: 0.0075 },
-  { key: 'chenkan109', value: 0.0075 },
-  { key: 'wzj911030', value: 0.005555555555555555 },
-  { key: 'wzj871126', value: 0.005555555555555555 },
-  { key: 'wzj165147', value: 0.005555555555555555 },
-  { key: 'tjl911030', value: 0.005555555555555555 },
-  { key: 'tjl871126', value: 0.005555555555555555 },
-  { key: 'tjl165147', value: 0.005555555555555555 },
-  { key: 'thw911030', value: 0.005555555555555555 },
-  { key: 'thw871126', value: 0.005555555555555555 },
-  { key: 'thw165147', value: 0.005555555555555555 },
 ]
 
-const mockExtendsGenerateResult = [
-  { key: 'zyf11012137', value: 0.020833333333333332 },
-  { key: 'zhengyifeng274667266', value: 0.020833333333333332 },
-  { key: 'z6837605', value: 0.020833333333333332 },
-  { key: 'xiaoxubisheng', value: 0.020833333333333332 },
-  { key: 'dragonlyzq', value: 0.020833333333333332 },
-  { key: 'chiwuchizu', value: 0.020833333333333332 },
-  { key: 'zyf911030', value: 0.015625 },
-  { key: 'zyf871126', value: 0.015625 },
-  { key: 'zhengyifeng588', value: 0.015625 },
-  { key: 'zyf165147', value: 0.010416666666666666 },
-  { key: 'zhengyifeng741', value: 0.010416666666666666 },
-  { key: 'zhengyifeng109', value: 0.010416666666666666 },
-  { key: 'sn11012137', value: 0.010416666666666666 },
-  { key: 'momozq_zyf', value: 0.010416666666666666 },
-  { key: 'momozq', value: 0.010416666666666666 },
-  { key: 'ming274667266', value: 0.010416666666666666 },
-  { key: 'daqi274667266', value: 0.010416666666666666 },
-  { key: 'cp11012137', value: 0.010416666666666666 },
-  { key: 'anjing_zyf', value: 0.010416666666666666 },
-  { key: 'anjing', value: 0.010416666666666666 },
-  { key: 'yanyc2012', value: 0.008333333333333333 },
-  { key: 'yanyc1003', value: 0.008333333333333333 },
-  { key: 'xujsh2012', value: 0.008333333333333333 },
-  { key: 'xujsh1003', value: 0.008333333333333333 },
-  { key: 'swlangg274667266', value: 0.008333333333333333 },
-  { key: 'swlangg', value: 0.008333333333333333 },
-  { key: 'kangjie274667266', value: 0.008333333333333333 },
-  { key: 'kangjie', value: 0.008333333333333333 },
-  { key: 'jdnetyf274667266', value: 0.008333333333333333 },
-  { key: 'jdnetyf', value: 0.008333333333333333 },
-  { key: 'chitang274667266', value: 0.008333333333333333 },
-  { key: 'chitang', value: 0.008333333333333333 },
-  { key: 'chenkan274667266', value: 0.008333333333333333 },
-  { key: 'chenkan', value: 0.008333333333333333 },
-  { key: 'zhengyifeng911030', value: 0.0078125 },
-  { key: 'zhengyifeng871126', value: 0.0078125 },
-  { key: 'lijingnan588', value: 0.0078125 },
-  { key: 'chenming911030', value: 0.0078125 },
-  { key: 'chenming871126', value: 0.0078125 },
-  { key: 'wzj274667266', value: 0.006944444444444444 },
-  { key: 'wzj122106144', value: 0.006944444444444444 },
-  { key: 'tjl274667266', value: 0.006944444444444444 },
-  { key: 'tjl122106144', value: 0.006944444444444444 },
-  { key: 'thw274667266', value: 0.006944444444444444 },
-  { key: 'thw122106144', value: 0.006944444444444444 },
-  { key: 'zhengyifeng520', value: 0.005208333333333333 },
-  { key: 'zhengyifeng165147', value: 0.005208333333333333 },
-  { key: 'lijingnan741', value: 0.005208333333333333 },
-  { key: 'lijingnan109', value: 0.005208333333333333 },
-  { key: 'chenming165147', value: 0.005208333333333333 },
-  { key: 'swlangg588', value: 0.004687500000000001 },
-  { key: 'kangjie588', value: 0.004687500000000001 },
-  { key: 'jdnetyf588', value: 0.004687500000000001 },
-  { key: 'chitang588', value: 0.004687500000000001 },
-  { key: 'chenkan588', value: 0.004687500000000001 },
-  { key: 'yanyc8612', value: 0.004166666666666667 },
-  { key: 'xujsh8612', value: 0.004166666666666667 },
-  { key: 'ming2012', value: 0.004166666666666667 },
-  { key: 'ming1003', value: 0.004166666666666667 },
-  { key: 'daqi2012', value: 0.004166666666666667 },
-  { key: 'daqi1003', value: 0.004166666666666667 },
-  { key: 'sn911030', value: 0.00390625 },
-  { key: 'sn871126', value: 0.00390625 },
-  { key: 'cp911030', value: 0.00390625 },
-  { key: 'cp871126', value: 0.00390625 },
-  { key: 'momozq_wzj', value: 0.003472222222222222 },
-  { key: 'momozq_tjl', value: 0.003472222222222222 },
-  { key: 'momozq_thw', value: 0.003472222222222222 },
-  { key: 'anjing_wzj', value: 0.003472222222222222 },
-  { key: 'anjing_tjl', value: 0.003472222222222222 },
-  { key: 'anjing_thw', value: 0.003472222222222222 },
-  { key: 'swlangg741', value: 0.003125 },
-  { key: 'swlangg109', value: 0.003125 },
-  { key: 'kangjie741', value: 0.003125 },
-  { key: 'kangjie109', value: 0.003125 },
-  { key: 'jdnetyf741', value: 0.003125 },
-  { key: 'jdnetyf109', value: 0.003125 },
-  { key: 'chitang741', value: 0.003125 },
-  { key: 'chitang109', value: 0.003125 },
-  { key: 'chenkan741', value: 0.003125 },
-  { key: 'chenkan109', value: 0.003125 },
-  { key: 'wzj911030', value: 0.0026041666666666665 },
-  { key: 'wzj871126', value: 0.0026041666666666665 },
-  { key: 'tjl911030', value: 0.0026041666666666665 },
-  { key: 'tjl871126', value: 0.0026041666666666665 },
-  { key: 'thw911030', value: 0.0026041666666666665 },
-  { key: 'thw871126', value: 0.0026041666666666665 },
-  { key: 'sn165147', value: 0.0026041666666666665 },
-  { key: 'lijingnan520', value: 0.0026041666666666665 },
-  { key: 'cp165147', value: 0.0026041666666666665 },
-  { key: 'ming8612', value: 0.0020833333333333333 },
-  { key: 'daqi8612', value: 0.0020833333333333333 },
-  { key: 'wzj165147', value: 0.001736111111111111 },
-  { key: 'tjl165147', value: 0.001736111111111111 },
-  { key: 'thw165147', value: 0.001736111111111111 },
-  { key: 'swlangg520', value: 0.0015625 },
-  { key: 'kangjie520', value: 0.0015625 },
-  { key: 'jdnetyf520', value: 0.0015625 },
-  { key: 'chitang520', value: 0.0015625 },
-  { key: 'chenkan520', value: 0.0015625 },
+const mockExtendsGenerateResultTop20 = [
+  'zhengyifeng274667266',
+  'zyf11012137',
+  'z6837605',
+  'z6837605',
+  'xiaoxubisheng',
+  'dragonlyzq',
+  'chiwuchizu',
+  'zhengyifeng588',
+  'zyf911030',
+  'zyf871126',
+  'zhengyifeng741',
+  'zhengyifeng109',
+  'zyf165147',
+  'sn11012137',
+  'momozq_zyf',
+  'momozq',
+  'ming274667266',
+  'daqi274667266',
+  'cp11012137',
+  'anjing_zyf',
 ]
 
-const mockMarkovTwoLevelTrainTop10 = [
+const mockMarkovWithUserInfoPwdsTop10 = [
   'zhengyifeng910504¥',
   'zhengyifeng741¥',
   'zhengyifeng588¥',
@@ -714,7 +604,7 @@ const mockMarkovTwoLevelTrainTop10 = [
   'tjl274667266¥',
 ]
 
-const mockMarkovPCFGTrainTop20 = [
+const mockMarkovPcfgStructuresTop20 = [
   { key: '「ESF」「ENF」', value: 0.0625 },
   { key: '「USF」「ENF」', value: 0.020833333333333332 },
   { key: '「NP」「ENF」', value: 0.020833333333333332 },
@@ -751,11 +641,35 @@ const mockMarkovPCFGUserInfoPasswordTop10 = [
   'xujshen',
 ]
 
+const mockMarkovWithoutUserInfoPwdsTop20 = [
+  { key: 'momozq¥', value: 0.05 },
+  { key: 'jdnetyf¥', value: 0.05 },
+  { key: 'dragonlyzq¥', value: 0.05 },
+  { key: 'chizu¥', value: 0.03333333333333333 },
+  { key: 'z6837¥', value: 0.025 },
+  { key: 'z6837605¥', value: 0.025 },
+  { key: 'cp165147¥', value: 0.025 },
+  { key: 'cp165144¥', value: 0.025 },
+  { key: 'tjl12¥', value: 0.020000000000000004 },
+  { key: 'xujsh20¥', value: 0.0125 },
+  { key: 'xiaoxubish20¥', value: 0.0125 },
+  { key: 'chiwuchizu¥', value: 0.01111111111111111 },
+  { key: 'tjl126¥', value: 0.010000000000000002 },
+  { key: 'daqi109¥', value: 0.010000000000000002 },
+  { key: 'yan741¥', value: 0.008333333333333333 },
+  { key: 'yan588¥', value: 0.008333333333333333 },
+  { key: 'swlan741¥', value: 0.008333333333333333 },
+  { key: 'swlan588¥', value: 0.008333333333333333 },
+  { key: 'kan741¥', value: 0.008333333333333333 },
+  { key: 'kan588¥', value: 0.008333333333333333 },
+  { key: 'wzj87112¥', value: 0.006666666666666667 },
+]
+
 // 清空所有的 test 缓存
 test.beforeEach(async () => {
   const removeKeys = _.flatten(await Promise.all([
-    redisClient.keys(REDIS_TRANSFER_PROBABILITY_KEY),
-    redisClient.keys(REDIS_FRAGMET_COUNT_KEY),
+    redisClient.keys(REDIS_MARKOV_ALL_KEY),
+    redisClient.keys(REDIS_PCFG_ALL_KEY),
     redisClient.keys(REDIS_MARKOV_PCFG_ALL_KEY),
   ]))
   if (removeKeys.length > 0) {
@@ -763,47 +677,59 @@ test.beforeEach(async () => {
   }
 })
 
-test('Extends pcfg statistic', async t => {
-  const pcfg = new PCFG(_.cloneDeep(mockPwds))
-  pcfg.train(false)
+test('[Train] Pcfg with userInfo.', async t => {
+  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  pcfg.train()
   const topTen = await redisClient.zrevrange(REDIS_PCFG_COUNT_KEY, 0, 10, 'WITHSCORES')
-  t.deepEqual(mockExtendsResult, topTen)
+  t.deepEqual(mockPcfgWithUserInfoStructrures, topTen)
 })
 
-test('Basic pcfg statistic', async t => {
-  const pcfg = new PCFG(_.cloneDeep(mockPwds))
-  pcfg.train(true)
+test('[Train] Pcfg without userInfo.', async t => {
+  const pcfg = new PCFG(false, _.cloneDeep(mockUserInfos))
+  pcfg.train()
   const topTen = await redisClient.zrevrange(REDIS_PCFG_COUNT_KEY, 0, 10, 'WITHSCORES')
-  t.deepEqual(mockBasicResult, topTen)
+  t.deepEqual(mockPcfgWithoutUserInfoStructrures, topTen)
 })
 
-test('Basic password generate', async t => {
-  const pcfg = new PCFG(_.cloneDeep(mockPwds))
-  pcfg.train(true)
-  await pcfg.basicPasswordGenerator()
-  const top = await zrevrange(REDIS_PWD_COUNT_KEY, 0, -1, 'WITHSCORES')
+test('[Generate Structures] Pcfg with userInfo.', async t => {
+  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  pcfg.train()
+  await pcfg.passwordGenerate()
+  const top = await zrevrange(REDIS_PCFG_PWD_PROBABILITY_KEY, 0, -1, 'WITHSCORES')
   let total = 0
   _.each(top, u => {
     total += u.value
   })
   t.is(1 - total < 0.000001, true)
-  t.deepEqual(mockGenerateResult, top)
+  t.deepEqual(top.slice(0, 20), mockPcfgWithUserInfoPwdsTop20)
 })
 
-test('Extends password generate', async t => {
-  const pcfg = new PCFG(_.cloneDeep(mockPwds))
-  pcfg.train(false)
-  await pcfg.extendPasswordGenerator(_.cloneDeep(mockPwds)[0].userInfo)
-  const topResult = await zrevrange(REDIS_PWD_COUNT_KEY, 0, -1, 'WITHSCORES')
-  // extends 求和不一定等于1
-  t.deepEqual(mockExtendsGenerateResult, topResult)
+test('[Generate Pwds] Pcfg without userInfo.', async t => {
+  const pcfg = new PCFG(false, _.cloneDeep(mockUserInfos))
+  pcfg.train()
+  await pcfg.passwordGenerate()
+  const top = await zrevrange(REDIS_PCFG_PWD_PROBABILITY_KEY, 0, -1, 'WITHSCORES')
+  let total = 0
+  _.each(top, u => {
+    total += u.value
+  })
+  t.is(1 - total < 0.000001, true)
+  t.deepEqual(top.slice(0, 20), mockPcfgWithoutUserInfoPwdsTop20)
 })
 
-test('Extends markov train (endSymbol & userInfo)', async t => {
-  const markov = new Markov(true, _.cloneDeep(mockPwds), 3)
-  markov.train(true)
-  await markov.passwordGenerator()
-  const top = await zrevrange(REDIS_PWD_PROBABILITY_KEY, 0, -1, 'WITHSCORES')
+test('[Generate Pwds] Pcfg with userInfo.', async t => {
+  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  pcfg.train()
+  await pcfg.passwordGenerate()
+  const pwds = await pcfg.fillUserInfo(_.cloneDeep(mockUserInfos)[0].userInfo, 20)
+  t.deepEqual(pwds, mockExtendsGenerateResultTop20)
+})
+
+test('[Train] Markov with userInfo and end symbol.', async t => {
+  const markov = new Markov(_.cloneDeep(mockUserInfos), true, 3)
+  markov.train()
+  await markov.passwordGenerate()
+  const top = await zrevrange(REDIS_MARKOV_PWD_PROBABILITY_KEY, 0, -1, 'WITHSCORES')
   const total = _.reduce(
     _.map(top, topUnit => topUnit.value),
     (sum, n) => {
@@ -814,41 +740,49 @@ test('Extends markov train (endSymbol & userInfo)', async t => {
   t.is(1 - total < 0.1, true)
 })
 
-test('Extends markov generate password (endSymbol & userInfo)', async t => {
-  const markov = new Markov(true, _.cloneDeep(mockPwds), 3)
-  markov.train(true)
-  await markov.passwordGenerator()
-  const pwds = await markov.fillUserInfo(_.cloneDeep(mockPwds)[0].userInfo, 10)
-  t.deepEqual(pwds, mockMarkovTwoLevelTrainTop10)
+test('[Train] Markov without userInfo and end symbol.', async t => {
+  const markov = new Markov(_.cloneDeep(mockUserInfos), true, 2, false)
+  markov.train()
+  await markov.passwordGenerate()
+  const top20 = await zrevrange(REDIS_MARKOV_PWD_PROBABILITY_KEY, 0, 20, 'WITHSCORES')
+  t.deepEqual(top20, mockMarkovWithoutUserInfoPwdsTop20)
 })
 
-test('Merge markov and PCFG generate password (endSymbol & userInfo)', async t => {
-  const markov = new Markov(true, _.cloneDeep(mockPwds), 2)
-  markov.train(true)
-  const pcfg = new PCFG(_.cloneDeep(mockPwds))
-  pcfg.train(false)
+test('[Generate Pwds] Markov with userInfo and end symbol.', async t => {
+  const markov = new Markov(_.cloneDeep(mockUserInfos), true, 3)
+  markov.train()
+  await markov.passwordGenerate()
+  const pwds = await markov.fillUserInfo(_.cloneDeep(mockUserInfos)[0].userInfo, 10)
+  t.deepEqual(pwds, mockMarkovWithUserInfoPwdsTop10)
+})
+
+test('[Generate Structures] Markov-PCFG with userInfo and end symbol.', async t => {
+  const markov = new Markov(_.cloneDeep(mockUserInfos), true, 2)
+  markov.train()
+  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  pcfg.train()
   const markovPCFG = new MarkovPCFG(markov.level)
-  await markovPCFG.generatePwd()
+  await markovPCFG.passwordGenerate()
   const result = await zrevrange(REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY, 0, 20, 'WITHSCORES')
-  t.deepEqual(result, mockMarkovPCFGTrainTop20)
+  t.deepEqual(result, mockMarkovPcfgStructuresTop20)
 })
 
-test('Merge markov and PCFG generate userInfo password (endSymbol & userInfo)', async t => {
-  const markov = new Markov(true, _.cloneDeep(mockPwds), 2)
-  markov.train(false)
-  const pcfg = new PCFG(_.cloneDeep(mockPwds))
-  pcfg.train(false)
+test('[Generate Pwds] Markov-PCFG with userInfo and end symbol.', async t => {
+  const markov = new Markov(_.cloneDeep(mockUserInfos), false, 2)
+  markov.train()
+  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  pcfg.train()
   const markovPCFG = new MarkovPCFG(markov.level)
-  await markovPCFG.generatePwd()
-  const pwds = await markovPCFG.fillUserInfo(_.cloneDeep(mockPwds)[0].userInfo, 10)
+  await markovPCFG.passwordGenerate()
+  const pwds = await markovPCFG.fillUserInfo(_.cloneDeep(mockUserInfos)[0].userInfo, 10)
   t.deepEqual(pwds, mockMarkovPCFGUserInfoPasswordTop10)
 })
 
 // 清空所有的 test 缓存
 test.afterEach(async () => {
   const removeKeys = _.flatten(await Promise.all([
-    redisClient.keys(REDIS_TRANSFER_PROBABILITY_KEY),
-    redisClient.keys(REDIS_FRAGMET_COUNT_KEY),
+    redisClient.keys(REDIS_MARKOV_ALL_KEY),
+    redisClient.keys(REDIS_PCFG_ALL_KEY),
     redisClient.keys(REDIS_MARKOV_PCFG_ALL_KEY),
   ]))
   if (removeKeys.length > 0) {
