@@ -22,9 +22,11 @@ export default class MarkovPCFG extends Basic {
   constructor(
     level: number,
     userInfoType: Object = defaultUserInfoMarkovType,
-    pcfgTypeToMarkovType: Object = defaultPCFGTypeToMarkovType
+    pcfgTypeToMarkovType: Object = defaultPCFGTypeToMarkovType,
+    userInfoUnusefulFeature?: string[],
+    basicType?: Object
   ) {
-    super('Markov-PCFG', true, [])
+    super('Markov-PCFG', true, [], userInfoUnusefulFeature, basicType)
     this._basicTypeList = _.keys(_.invert(this._basicType))
     this._level = level
     this._pcfgTypeToMarkovType = pcfgTypeToMarkovType

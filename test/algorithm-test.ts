@@ -4,7 +4,7 @@ import * as _ from 'lodash'
 import PCFG from '../src/algorithm/PCFG'
 import redisClient from '../src/modules/redis-client'
 import Markov from '../src/algorithm/Markov'
-import MarkovPCFG from '../src/algorithm/markov-PCFG'
+import MarkovPCFG from '../src/algorithm/Markov-PCFG'
 import { parserZrevrange as zrevrange } from '../src/utils'
 
 const REDIS_PCFG_ALL_KEY = 'crackflow-test:pcfg:*'
@@ -678,21 +678,21 @@ test.beforeEach(async () => {
 })
 
 test('[Train] Pcfg with userInfo.', async t => {
-  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  const pcfg = new PCFG(_.cloneDeep(mockUserInfos), true)
   pcfg.train()
   const topTen = await redisClient.zrevrange(REDIS_PCFG_COUNT_KEY, 0, 10, 'WITHSCORES')
   t.deepEqual(mockPcfgWithUserInfoStructrures, topTen)
 })
 
 test('[Train] Pcfg without userInfo.', async t => {
-  const pcfg = new PCFG(false, _.cloneDeep(mockUserInfos))
+  const pcfg = new PCFG(_.cloneDeep(mockUserInfos), false)
   pcfg.train()
   const topTen = await redisClient.zrevrange(REDIS_PCFG_COUNT_KEY, 0, 10, 'WITHSCORES')
   t.deepEqual(mockPcfgWithoutUserInfoStructrures, topTen)
 })
 
 test('[Generate Structures] Pcfg with userInfo.', async t => {
-  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  const pcfg = new PCFG(_.cloneDeep(mockUserInfos), true)
   pcfg.train()
   await pcfg.passwordGenerate()
   const top = await zrevrange(REDIS_PCFG_PWD_PROBABILITY_KEY, 0, -1, 'WITHSCORES')
@@ -705,7 +705,7 @@ test('[Generate Structures] Pcfg with userInfo.', async t => {
 })
 
 test('[Generate Pwds] Pcfg without userInfo.', async t => {
-  const pcfg = new PCFG(false, _.cloneDeep(mockUserInfos))
+  const pcfg = new PCFG(_.cloneDeep(mockUserInfos), false)
   pcfg.train()
   await pcfg.passwordGenerate()
   const top = await zrevrange(REDIS_PCFG_PWD_PROBABILITY_KEY, 0, -1, 'WITHSCORES')
@@ -718,7 +718,7 @@ test('[Generate Pwds] Pcfg without userInfo.', async t => {
 })
 
 test('[Generate Pwds] Pcfg with userInfo.', async t => {
-  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  const pcfg = new PCFG(_.cloneDeep(mockUserInfos), true)
   pcfg.train()
   await pcfg.passwordGenerate()
   const pwds = await pcfg.fillUserInfo(_.cloneDeep(mockUserInfos)[0].userInfo, 20)
@@ -759,7 +759,7 @@ test('[Generate Pwds] Markov with userInfo and end symbol.', async t => {
 test('[Generate Structures] Markov-PCFG with userInfo and end symbol.', async t => {
   const markov = new Markov(_.cloneDeep(mockUserInfos), true, 2)
   markov.train()
-  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  const pcfg = new PCFG(_.cloneDeep(mockUserInfos), true)
   pcfg.train()
   const markovPCFG = new MarkovPCFG(markov.level)
   await markovPCFG.passwordGenerate()
@@ -770,7 +770,7 @@ test('[Generate Structures] Markov-PCFG with userInfo and end symbol.', async t 
 test('[Generate Pwds] Markov-PCFG with userInfo and end symbol.', async t => {
   const markov = new Markov(_.cloneDeep(mockUserInfos), false, 2)
   markov.train()
-  const pcfg = new PCFG(true, _.cloneDeep(mockUserInfos))
+  const pcfg = new PCFG(_.cloneDeep(mockUserInfos), true)
   pcfg.train()
   const markovPCFG = new MarkovPCFG(markov.level)
   await markovPCFG.passwordGenerate()
