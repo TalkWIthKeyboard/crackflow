@@ -158,7 +158,7 @@ async function markovPcfgTest(userInfo) {
 + `userInfoUnusefulFeature: string[]`: 用户信息中没有用到的特征 **[有默认值]**
 + `basicType: Object` : 基础类型的模式转换规则 **[有默认值]**
 
-#### Markov-PCFG
+#### Markov-PCFG
 
 + `level: number` : `Markov-chain` 的阶数
 + `pcfgTypeToMarkovType: Object` : `PCFG` 模式标记到 `Markov` 标记的映射 **[有默认值]**
@@ -166,7 +166,7 @@ async function markovPcfgTest(userInfo) {
 + `basicType: Object` : 基础类型的模式转换规则 **[有默认值]**
 
 ### Store
-由于在训练中会使用多进程并且避免 `node` 对新老生代内存以及堆栈和字符串长度等多个限制，中间的多个结果会保存在 `Redis` 中。所以为了进一步对效率的考虑，多个普通的存储过程都以异步的形式来实现。
+由于在训练中会使用多进程并且避免 `node` 对新老生代内存以及堆栈和字符串长度等多个限制，中间的多个结果会保存在 `Redis` 中。所以为了进一步对效率的考虑，多个普通的存储过程都以异步的形式来实现。
 
 下面会列出所有的算法中会使用到的 `Redis-key`：
 
