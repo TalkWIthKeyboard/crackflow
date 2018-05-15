@@ -4,13 +4,17 @@ import * as _ from 'lodash'
 import ExtendPCFG from '../src/algorithm/extend-PCFG'
 import redisClient from '../src/modules/redis-client'
 import Markov from '../src/algorithm/extend-markov'
+import MarkovPCFG from '../src/algorithm/markov-PCFG'
 import { parserZrevrange as zrevrange } from '../src/utils'
+
+const REDIS_FRAGMET_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:*'
+const REDIS_TRANSFER_PROBABILITY_KEY = 'crackflow-test:markov:*'
+const REDIS_MARKOV_PCFG_ALL_KEY = 'crackflow-test:markov-pcfg:*'
 
 const REDIS_PWD_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:probability'
 const REDIS_PCFG_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:count'
-const REDIS_FRAGMET_COUNT_KEY = 'crackflow-test:EXTEND:pcfg:*'
-const REDIS_TRANSFER_PROBABILITY_KEY = 'crackflow-test:markov:*'
 const REDIS_PWD_PROBABILITY_KEY = 'crackflow-test:markov:probability'
+const REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY = 'crackflow-test:markov-pcfg:probability'
 
 const mockPwds = [{
   code: 'z6837605',
@@ -698,16 +702,53 @@ const mockExtendsGenerateResult = [
 ]
 
 const mockMarkovTwoLevelTrainTop10 = [
-  'zhengyifeng274667266~',
-  'zhengyifeng741~',
-  'zhengyifeng588~',
-  'zyf165147~',
-  'z6837605~',
-  'chiwuchizu~',
-  'z6837~',
-  'cp165144~',
-  'zhengyifeng910504~',
-  'zyf870504~',
+  'zhengyifeng910504¥',
+  'zhengyifeng741¥',
+  'zhengyifeng588¥',
+  'zyf870504¥',
+  'zyf871126¥',
+  'zyf165147¥',
+  'zyf112746672662137¥',
+  'z6837605¥',
+  'yanyc8612¥',
+  'tjl274667266¥',
+]
+
+const mockMarkovPCFGTrainTop20 = [
+  { key: '「ESF」「ENF」', value: 0.0625 },
+  { key: '「USF」「ENF」', value: 0.020833333333333332 },
+  { key: '「NP」「ENF」', value: 0.020833333333333332 },
+  { key: 'z「UNF」', value: 0.020833333333333332 },
+  { key: 'z6837605', value: 0.020833333333333332 },
+  { key: '「NP」911', value: 0.013888888888888888 },
+  { key: '「NP」741', value: 0.013888888888888888 },
+  { key: '「NP」588', value: 0.013888888888888888 },
+  { key: '「ESF」588', value: 0.010416666666666666 },
+  { key: '「ESF」2012', value: 0.010416666666666666 },
+  { key: '「ESF」201', value: 0.010416666666666666 },
+  { key: '「NPFL」165147', value: 0.006944444444444444 },
+  { key: '「NPFL」165144', value: 0.006944444444444444 },
+  { key: '「ESF」1030', value: 0.005208333333333333 },
+  { key: '「ESF」103', value: 0.005208333333333333 },
+  { key: '「ESF」1012', value: 0.005208333333333333 },
+  { key: '「ESF」101', value: 0.005208333333333333 },
+  { key: 'cp165147', value: 0.005208333333333333 },
+  { key: 'cp165144', value: 0.005208333333333333 },
+  { key: '「ESF」109', value: 0.003472222222222222 },
+  { key: '「ESF」1061', value: 0.003472222222222222 },
+]
+
+const mockMarkovPCFGUserInfoPasswordTop10 = [
+  'z6837605',
+  'zhengyifeng911',
+  'zhengyifeng741',
+  'zhengyifeng588',
+  'zyf165147',
+  'zyf165144',
+  'cp165147',
+  'cp165144',
+  'xujshen274667266',
+  'xujshen',
 ]
 
 // 清空所有的 test 缓存
@@ -715,6 +756,7 @@ test.beforeEach(async () => {
   const removeKeys = _.flatten(await Promise.all([
     redisClient.keys(REDIS_TRANSFER_PROBABILITY_KEY),
     redisClient.keys(REDIS_FRAGMET_COUNT_KEY),
+    redisClient.keys(REDIS_MARKOV_PCFG_ALL_KEY),
   ]))
   if (removeKeys.length > 0) {
     await redisClient.del(...removeKeys)
@@ -722,22 +764,22 @@ test.beforeEach(async () => {
 })
 
 test('Extends pcfg statistic', async t => {
-  const pcfg = new ExtendPCFG(mockPwds)
-  pcfg.basicPcfgWorker(false)
+  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  pcfg.train(false)
   const topTen = await redisClient.zrevrange(REDIS_PCFG_COUNT_KEY, 0, 10, 'WITHSCORES')
   t.deepEqual(mockExtendsResult, topTen)
 })
 
 test('Basic pcfg statistic', async t => {
-  const pcfg = new ExtendPCFG(mockPwds)
-  pcfg.basicPcfgWorker(true)
+  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  pcfg.train(true)
   const topTen = await redisClient.zrevrange(REDIS_PCFG_COUNT_KEY, 0, 10, 'WITHSCORES')
   t.deepEqual(mockBasicResult, topTen)
 })
 
 test('Basic password generate', async t => {
-  const pcfg = new ExtendPCFG(mockPwds)
-  pcfg.basicPcfgWorker(true)
+  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  pcfg.train(true)
   await pcfg.basicPasswordGenerator()
   const top = await zrevrange(REDIS_PWD_COUNT_KEY, 0, -1, 'WITHSCORES')
   let total = 0
@@ -749,16 +791,16 @@ test('Basic password generate', async t => {
 })
 
 test('Extends password generate', async t => {
-  const pcfg = new ExtendPCFG(mockPwds)
-  pcfg.basicPcfgWorker(false)
-  await pcfg.extendPasswordGenerator(mockPwds[0].userInfo)
+  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  pcfg.train(false)
+  await pcfg.extendPasswordGenerator(_.cloneDeep(mockPwds)[0].userInfo)
   const topResult = await zrevrange(REDIS_PWD_COUNT_KEY, 0, -1, 'WITHSCORES')
   // extends 求和不一定等于1
   t.deepEqual(mockExtendsGenerateResult, topResult)
 })
 
 test('Extends markov train (endSymbol & userInfo)', async t => {
-  const markov = new Markov(true, mockPwds, 2)
+  const markov = new Markov(true, _.cloneDeep(mockPwds), 3)
   markov.train(true)
   await markov.passwordGenerator()
   const top = await zrevrange(REDIS_PWD_PROBABILITY_KEY, 0, -1, 'WITHSCORES')
@@ -769,15 +811,37 @@ test('Extends markov train (endSymbol & userInfo)', async t => {
     },
     0
   )
-  t.is(1 - total < 0.00001, true)
+  t.is(1 - total < 0.1, true)
 })
 
 test('Extends markov generate password (endSymbol & userInfo)', async t => {
-  const markov = new Markov(true, mockPwds, 2)
+  const markov = new Markov(true, _.cloneDeep(mockPwds), 3)
   markov.train(true)
   await markov.passwordGenerator()
-  const pwds = await markov.fillUserInfo(mockPwds[0].userInfo, 10)
+  const pwds = await markov.fillUserInfo(_.cloneDeep(mockPwds)[0].userInfo, 10)
   t.deepEqual(pwds, mockMarkovTwoLevelTrainTop10)
+})
+
+test('Merge markov and PCFG generate password (endSymbol & userInfo)', async t => {
+  const markov = new Markov(true, _.cloneDeep(mockPwds), 2)
+  markov.train(true)
+  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  pcfg.train(false)
+  const markovPCFG = new MarkovPCFG(pcfg.name, markov.level)
+  await markovPCFG.generatePwd()
+  const result = await zrevrange(REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY, 0, 20, 'WITHSCORES')
+  t.deepEqual(result, mockMarkovPCFGTrainTop20)
+})
+
+test('Merge markov and PCFG generate userInfo password (endSymbol & userInfo)', async t => {
+  const markov = new Markov(true, _.cloneDeep(mockPwds), 2)
+  markov.train(false)
+  const pcfg = new ExtendPCFG(_.cloneDeep(mockPwds))
+  pcfg.train(false)
+  const markovPCFG = new MarkovPCFG(pcfg.name, 2)
+  await markovPCFG.generatePwd()
+  const pwds = await markovPCFG.fillUserInfo(_.cloneDeep(mockPwds)[0].userInfo, 10)
+  t.deepEqual(pwds, mockMarkovPCFGUserInfoPasswordTop10)
 })
 
 // 清空所有的 test 缓存
@@ -785,6 +849,7 @@ test.afterEach(async () => {
   const removeKeys = _.flatten(await Promise.all([
     redisClient.keys(REDIS_TRANSFER_PROBABILITY_KEY),
     redisClient.keys(REDIS_FRAGMET_COUNT_KEY),
+    redisClient.keys(REDIS_MARKOV_PCFG_ALL_KEY),
   ]))
   if (removeKeys.length > 0) {
     await redisClient.del(...removeKeys)

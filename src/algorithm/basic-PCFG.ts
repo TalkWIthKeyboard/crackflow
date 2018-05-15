@@ -350,7 +350,7 @@ export default class PCFG {
    * 2. 这里只进行统计，不进行排序
    * @param basicGenerator   是否是普通模式
    */
-  public basicPcfgWorker(basicGenerator: boolean) {
+  public train(basicGenerator: boolean) {
     _.each(this._pwds, pwd => {
       this._extends(
         pwd.code,
