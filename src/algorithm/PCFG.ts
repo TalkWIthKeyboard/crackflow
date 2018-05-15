@@ -11,11 +11,13 @@ export default class PCFG extends Basic {
   private readonly _userInfoMarkovType: Object
 
   constructor(
+    pwds: PwdCount[],    
     isIncludeUserInfo: boolean,
-    pwds: PwdCount[],
-    userInfoMarkovType: Object = defaultUserInfoMarkovType
+    userInfoMarkovType: Object = defaultUserInfoMarkovType,
+    userInfoUnusefulFeature?: string[],
+    basicType?: Object
   ) {
-    super('PCFG', isIncludeUserInfo, pwds)
+    super('PCFG', isIncludeUserInfo, pwds, userInfoUnusefulFeature, basicType)
     this._userInfoMarkovType = userInfoMarkovType
   }
 

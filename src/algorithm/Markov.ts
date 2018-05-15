@@ -20,9 +20,11 @@ export default class Markov extends Basic {
     pwds: PwdCount[],
     isEndSymbol: boolean = false,
     level: number = 2,
-    isIncludeUserInfo: boolean = true
+    isIncludeUserInfo: boolean = true,
+    userInfoUnusefulFeature?: string[],
+    basicType?: Object
   ) {
-    super('Markov', isIncludeUserInfo, pwds)
+    super('Markov', isIncludeUserInfo, pwds, userInfoUnusefulFeature, basicType)
     this._level = level
     this._isEndSymbol = isEndSymbol
   }
