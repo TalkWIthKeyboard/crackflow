@@ -111,6 +111,7 @@ async function extraMarkovTest(userInfo) {
 ```
 
 ### Markov-PCFG
+> [算法实现的具体介绍](./detail-readme/markov-PCFG-readme.md)
 
 该项目在基于用户信息的 `Markov` 和 `PCFG` 算法的基础上设计了一种新的算法 `Markov-PCFG`。需要分别训练出 `Markov` 和 `PCFG` 两种模型以后，使用这种口令生成算法。该算法会以出现概率取出 `PCFG` 结构，再利用现有的 `Markov` 模型来对 `PCFG` 模型中的普通模式进行填充，最后使用用户信息对 `extra` 部分进行填充。
 
