@@ -1,68 +1,39 @@
 # Crackflow
 > The framework of works about cracking password.
 
+## Engineering
+
++ [技术选型](./detail-readme/project-language-tool.md)
+
 ## Algorithm
 对于算法，抽象了三个大步骤，`Basic` 基类也分别暴露了三个 `pulic` 方法来进行实现：
 
-+ **Train：** 通过用户信息和密码对模型进行训练
-+ **PasswordGenerate：** 通过模型对基础密码结构进行生成
-+ **FillUserInfo：** 使用用户信息对密码结构进行填补
++ **Train：** 通过用户信息和口令对模型进行训练
++ **PasswordGenerate：** 通过模型对基础口令结构进行生成
++ **FillUserInfo：** 使用用户信息对口令结构进行填充
 
 该项目主要实现了三个算法，与经典算法的区别是将用户信息加入了算法当中。
 
 ### PCFG
 > [算法实现的具体介绍](./detail-readme/extra-PCFG-readme.md)
 
-该项目完成了 `basic` 和 `extra` 两种模式的 `PCFG`。`basic` 与经典的 `PCFG` 算法一致，提供了 `数字 -> A`、 `小写字母 -> B`、 `大写字母 -> C`、 `特殊符号 -> D` 这样4种模式变换。训练模型的过程中，进行了口令到 `PCFG` 结构的变化和结构的计数，并且对同种模式的连续同类型片段也进行了统计。在口令生成环节，以出现概率降序的次序遍历结构，使用同种模式的连续同类型片段进行结构中模式的填补。
+该项目完成了 `basic` 和 `extra` 两种模式的 `PCFG`。`basic` 与经典的 `PCFG` 算法一致，提供了 `数字 -> A`、 `小写字母 -> B`、 `大写字母 -> C`、 `特殊符号 -> D` 这样4种模式变换。训练模型的过程中，进行了口令到 `PCFG` 结构的变化和结构的计数，并且对同种模式的连续同类型片段也进行了统计。在口令生成环节，以出现概率降序的次序遍历结构，使用同种模式的连续同类型片段进行结构中模式的填充。
 
-```
-                 pwd:  sw1234HELLO!1234!
-     PCFG Structures:  B2A4C5D1A4D1
-fragmet（对同类型片段的统计）:  同类型片段所属模式 -> 同类型片段字符串, 出现次数
-                            B2 -> sw, 1     
-                            A4 -> 1234, 2
-                            D1 -> !, 2
-                            C5 -> HELLO, 1
-```
-
-而特殊实现的是 `extra` 模式，在这个模式下，会在字符串中识别用户信息，进行预先设置好的模式变换，**特别的是无论这个用户信息有多长，都会默认这个这个模式的长度为1**。在口令生成环节，以出现概率降序的次序遍历结构，使用同种模式的连续同类型片段进行结构中普通模式的填补，之后再使用用户对应的信息填补 `extra` 部分。
-
-```
-// 用户信息
-userInfo: {
-  mobile: 15317225541,
-  namePinYin: songwei,
-}
-
-// 用户信息的转换规则
-mobile -> E
-namePinYin -> F
-
-
-
-pwd:                    songweiabc153172255411234!
-basic PCFG Structures:  B10A15D1
-              fragmet:  B10 -> songweiabc, 1
-                        A15 -> 153172255411234, 1
-                        D1  -> !, 1
-
-extra PCFG Structures:  F1B3E1A4D1
-              fragmet:  B3 -> abc, 1
-                        A4 -> 1234, 1
-                        D1 -> 1, 1
-```
+而特殊实现的是 `extra` 模式，在这个模式下，会在字符串中识别用户信息，分别对多处用户信息进行预先设置好的模式变换，**特别的是无论这个用户信息有多长，都会默认这个这个模式的长度为1**。在口令生成环节，以出现概率降序的次序遍历结构，使用同种模式的连续同类型片段进行结构中普通模式的填充生成半成熟口令，之后再使用用户对应的信息填充用户信息标记部分。
 
 `PCFG` 对应了项目中的 `PCFG` 类，使用起来很简便：
 
 ```Typescript
 import PCFG from '../src/algorithm/PCFG'
 
+// 普通模式
 async function basicPcfgTest(pwds) {
   const pcfg = new PCFG(pwds, false)
   pcfg.train()
   await pcfg.passwordGenerate()
 }
 
+// 基于用户信息模式
 async function extraPcfgTest(userInfos) {
   const pcfg = new PCFG(userInfos, true)
   pcfg.train()
@@ -76,32 +47,19 @@ async function extraPcfgTest(userInfos) {
 
 该项目完成了 `basic` 和 `extra` 两种模式的 `Markov-chain`。 `basic` 模式与经典的 `Markov` 相同，在 `new` 一个 `Markov` 对象的时候可以指定阶数。生成口令的时候会按照出现概率降序枚举值。并且还实现了 `end-symbol` 标准化的算法，可以在初始化对象的时候设定。
 
-而特殊实现的是 `extra` 模式，会优先将用户信息转换为特殊的单元，例如一个2阶的 `Markov-chain` 的转移：
-
-```
-// 用户信息
-userInfo: {
-  mobile: 15317225541,
-  namePinYin: songwei,
-}
-
-pwd:                    songweiabc
-basic Markov Transfer:  [son, on -> g, ng -> w, gw -> e, we -> i, ei -> a, ia -> b, ab -> c]
-
-extra Markov Transfer:  [「namePinYin」ab, ab -> c]
-```
-
-在口令生成环节，会先通过常规的 `Markov-chain` 生成步骤，生成含有用户信息特殊标记的结构，再使用用户信息对结构中的特殊标记进行替换。和 `PCFG` 类一样， `Markov` 类的使用也很简单：
+而特殊实现的是 `extra` 模式，会优先将用户信息分别转换为特殊的单元。在口令生成环节，会先通过常规的 `Markov-chain` 生成步骤，生成含有用户信息特殊标记的半成熟口令，再使用用户信息对结构中的特殊标记进行替换。和 `PCFG` 类一样， `Markov` 类的使用也很简单：
 
 ```Typescript
 import Markov from '../src/algorithm/Markov'
 
+// 普通模式
 async function basicMarkovTest(pwds) {
   const markov = new Markov(pwds, true, 3, false)
   markov.train()
   await markov.passwordGenerate()
 }
 
+// 基于用户信息模式
 async function extraMarkovTest(userInfo) {
   const markov = new Markov(userInfo, true, 3, true)
   markov.train()
@@ -131,7 +89,7 @@ async function markovPcfgTest(userInfo) {
 ### API
 
 #### PCFG
-+ `pwds: PwdCount[]` : 用来训练的密码和用户信息，需要遵守该接口规范
++ `pwds: PwdCount[]` : 用来训练的口令和用户信息，需要遵守该接口规范
 
   ```Typescript
   interface PwdCount {
@@ -146,7 +104,7 @@ async function markovPcfgTest(userInfo) {
 + `basicType: Object` : 基础类型的模式转换规则 **[有默认值]**
 
 #### Markov
-+ `pwds: PwdCount[]` : 用来训练的密码和用户信息，需要遵守该接口规范
++ `pwds: PwdCount[]` : 用来训练的口令和用户信息，需要遵守该接口规范
 
   ```Typescript
   interface PwdCount {
@@ -175,7 +133,7 @@ async function markovPcfgTest(userInfo) {
 下面会列出所有的算法中会使用到的 `Redis-key`：
 
 + `crackflow-${process.env.NODE_ENV}:pcfg:count`
-  + 用于保存 `PCFG` 模式变幻结构，以及该结构的出现次数
+  + 用于保存 `PCFG` 模式变换结构，以及该结构的出现次数
   + `sortedset` { structure: count }
 
 + `crackflow-${process.env.NODE_ENV}:markov-pcfg:probability`
@@ -192,12 +150,12 @@ async function markovPcfgTest(userInfo) {
 
 + `crackflow-${process.env.NODE_ENV}:markov:probability:{{word}}`
   + 用于保存 `Markov` 算法的转移概率
-  + `sortedset`  记录 word -> any 的转移概率
+  + `sortedset`  记录 `word -> char` 的转移概率
 
 + `crackflow-${process.env.NODE_ENV}:markov:begin`
   + 用于保存 `Markov` 算法的起始词，以及该词的出现次数
   + `sortedset`  { word: count }
 
 + `crackflow-${process.env.NODE_ENV}:pcfg:{{type}}:{{number}}`
-  + 用户保存 `PCFG` 算法的同类型片段串，以及该串的出现次数 
+  + 用于保存 `PCFG` 算法的同类型片段，以及该片段的出现次数 
   + `sortedset` { fragmet: count }
