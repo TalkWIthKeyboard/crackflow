@@ -72,6 +72,7 @@ async function extraPcfgTest(userInfos) {
 ```
 
 ### Markov
+> [算法实现的具体介绍](./detail-readme/extra-Markov-readme.md)
 
 该项目完成了 `basic` 和 `extra` 两种模式的 `Markov-chain`。 `basic` 模式与经典的 `Markov` 相同，在 `new` 一个 `Markov` 对象的时候可以指定阶数。生成口令的时候会按照出现概率降序枚举值。并且还实现了 `end-symbol` 标准化的算法，可以在初始化对象的时候设定。
 
