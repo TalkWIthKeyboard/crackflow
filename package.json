@@ -12,7 +12,7 @@
     "test": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow:* ava --serial dist/test/algorithm-test.js",
     "lint": "tslint --project .",
     "fix": "tslint --fix --project .",
-    "cluster": "npm run clean && npm run compile && NODE_ENV=production DEBUG=crackflow:* node dist/src/flow/index.js",
+    "cluster": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow:* node dist/src/flow/train.js",
     "statistic": "npm run clean && npm run compile && NODE_ENV=production DEBUG=crackflow:* node dist/src/statistic/index.js"
   },
   "repository": {

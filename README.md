@@ -4,6 +4,7 @@
 ## Engineering
 
 + [技术选型](./detail-readme/project-language-tool.md)
++ [清洗数据](./detail-readme/clean-data.md)
 
 ## Algorithm
 对于算法，抽象了三个大步骤，`Basic` 基类也分别暴露了三个 `pulic` 方法来进行实现：
