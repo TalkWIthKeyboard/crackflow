@@ -5,6 +5,10 @@ import { parserZrevrange } from '../utils'
 import { RowPasswordCount } from './interface'
 import redisClient from '../modules/redis-client'
 
+// hashmap { length: count }
+const REDIS_PWD_LENGTH_COUNT = `crackflow-${process.env.NODE_ENV}:statistic:length:count`
+// hashmap { char: count }
+const REDIS_PWD_CHAR_COUNT = `crackflow-${process.env.NODE_ENV}:statistic:char:count`
 // sortedset { pwd: count }
 const REDIS_PWD_COUNT = `crackflow-${process.env.NODE_ENV}:statistic:pwd:count`
 // hm { tableName_(legal/total/repetition): count }
@@ -15,13 +19,32 @@ const REDIS_STATISTIC_ROW_FEATURE_LEGAL_COUNT = `crackflow-${process.env.NODE_EN
 const REDIS_STATISTIC_PWD_INCLUDE_COUNT = `crackflow-${process.env.NODE_ENV}:statistic:pwdInclude:count`
 
 /**
- * 统计密码的出现次数，并以降序排列
+ * 1. 统计密码的出现次数，并以降序排列
+ * 2. 统计密码中的字符出现次数
+ * 3. 统计密码的长度
  * @param passwords
  */
 export function passwordCount(passwords: RowPasswordCount[]) {
   return Promise.mapSeries(_.chunk(passwords, 50), pwds => {
-    return Promise.map(pwds, pwd => {
-      return redisClient.zincrby(REDIS_PWD_COUNT, pwd.numcount, pwd.password)
+    return Promise.map(pwds, async pwd => {
+      const charMap = {}
+      _.each(pwd.password, char => {
+        if (!charMap[char]) {
+          charMap[char] = pwd.numcount
+        } else {
+          charMap[char] += pwd.numcount
+        }
+      })
+      await Promise.all([
+        // 密码出现次数
+        redisClient.zincrby(REDIS_PWD_COUNT, pwd.numcount, pwd.password),
+        // 密码中字符出现次数
+        Promise.map(_.keys(charMap), key => {
+          return redisClient.hincrby(REDIS_PWD_CHAR_COUNT, key, charMap[key])
+        }),
+        // 密码长度
+        redisClient.hincrby(REDIS_PWD_LENGTH_COUNT, pwd.password.length.toString(), pwd.numcount),
+      ])
     })
   })
 }

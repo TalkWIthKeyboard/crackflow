@@ -193,7 +193,7 @@ export default class MarkovPCFG extends Basic {
     // 起始
     if (index === 0 && num === 0) {
       const pcfgBeginUnits = this._getUnitsByNumber(units, this._level + 1)
-      const rowMarkovBeginUnits = await zrevrange(keys.REDIS_MARKOV_BEGIN_KEY, 0, -1, 'WITHSCORES')
+      const rowMarkovBeginUnits = await zrevrange(keys.REDIS_MARKOV_BEGIN_KEY(true), 0, -1, 'WITHSCORES')
       // 拿出符合条件的 Markov begin units
       const beginUnits = this._filterUnitByPCFGUnit(rowMarkovBeginUnits, pcfgBeginUnits.res)
       const total = this._calculateTotalOfSortedset(beginUnits)
@@ -212,7 +212,7 @@ export default class MarkovPCFG extends Basic {
       // 基础类型
       if (this._basicTypeList.includes(units[index].type)) {
         const rowChars = await zrevrange(
-          keys.REDIS_MARKOV_TRANSFER_KEY.replace(/{{word}}/, preUnit),
+          keys.REDIS_MARKOV_TRANSFER_KEY(true).replace(/{{word}}/, preUnit),
           0, -1, 'WITHSCORES'
         )
         const chars = this._filterCharByType(rowChars, units[index].type)
@@ -247,7 +247,7 @@ export default class MarkovPCFG extends Basic {
    * 生成密码
    */
   public async passwordGenerate() {
-    const structures = (await zrevrange(keys.REDIS_PCFG_COUNT_KEY, 0, -1, 'WITHSCORES'))
+    const structures = (await zrevrange(keys.REDIS_PCFG_COUNT_KEY(true), 0, -1, 'WITHSCORES'))
     const total = this._calculateTotalOfSortedset(structures)
     for (const structure of structures) {
       const units = structure.key.split(',')

@@ -15,6 +15,8 @@ export default class Markov extends Basic {
   private _temBeginWordSet: {}
   // 是否启用 end-symbol 标准化算法
   private readonly _isEndSymbol: boolean
+  // 累加该变量用来限制生成的半成熟口令的个数
+  private _numOfRowPwds: number
 
   constructor(
     pwds: PwdCount[],
@@ -90,7 +92,7 @@ export default class Markov extends Basic {
         // 平衡繁生多个code的pwd和1个code的pwd的权重
         if (!this._temBeginWordSet[newThisUnit]) {
           redisClient.zincrby(
-            keys.REDIS_MARKOV_BEGIN_KEY,
+            keys.REDIS_MARKOV_BEGIN_KEY(this._isIncludeUserInfo),
             count,
             newThisUnit.replace(/，¥/g, '')
           )
@@ -103,7 +105,7 @@ export default class Markov extends Basic {
     } else {
       // 进行转移概率的记录
       redisClient.zincrby(
-        keys.REDIS_MARKOV_TRANSFER_KEY.replace(/{{word}}/, beforeUnit),
+        keys.REDIS_MARKOV_TRANSFER_KEY(this._isIncludeUserInfo).replace(/{{word}}/, beforeUnit),
         count,
         char
       )
@@ -132,6 +134,9 @@ export default class Markov extends Basic {
     userInfo: UserInfo,
     replacedPwd: string
   ) {
+    if (this._temReplacePwdList.length > 100) {
+      return
+    }
     if (index >= pwd.length) {
       this._temReplacePwdList.push(replacedPwd)
       return
@@ -179,12 +184,16 @@ export default class Markov extends Basic {
     probability: number,
     num: number
   ) {
-    if (num > 20) {
+    // 限制生成的半成熟口令的数量
+    if (this._numOfRowPwds > parseInt(process.env.LIMIT!)) {
+      return
+    }
+    if (num > 10) {
       return
     }
     const alternative = beforeUnit === ''
-      ? await zrevrange(keys.REDIS_MARKOV_BEGIN_KEY, 0, -1, 'WITHSCORES')
-      : await zrevrange(keys.REDIS_MARKOV_TRANSFER_KEY.replace(/{{word}}/, beforeUnit), 0, -1, 'WITHSCORES')
+      ? await zrevrange(keys.REDIS_MARKOV_BEGIN_KEY(this._isIncludeUserInfo), 0, -1, 'WITHSCORES')
+      : await zrevrange(keys.REDIS_MARKOV_TRANSFER_KEY(this._isIncludeUserInfo).replace(/{{word}}/, beforeUnit), 0, 10, 'WITHSCORES')
     const total = _.reduce(
       _.map(alternative, a => a.value),
       function (sum, n) {
@@ -193,10 +202,19 @@ export default class Markov extends Basic {
       0
     )
     for (const unit of alternative) {
+      // 限制生成的半成熟口令的数量
+      if (this._numOfRowPwds > parseInt(process.env.LIMIT!)) {
+        break
+      }
       const newPwd = pwd + unit.key
       const newProbability = probability * (unit.value / total)
       if (_.last(newPwd) === '¥') {
-        redisClient.zadd(keys.REDIS_MARKOV_PWD_PROBABILITY_KEY, newProbability.toString(), newPwd.replace(/，/g, ''))
+        this._numOfRowPwds += 1
+        redisClient.zadd(
+          keys.REDIS_MARKOV_PWD_PROBABILITY_KEY(this._isIncludeUserInfo),
+          newProbability.toString(),
+          newPwd.replace(/，/g, '')
+        )
       } else {
         await this._passwordGenerate(
           beforeUnit === ''
@@ -237,6 +255,7 @@ export default class Markov extends Basic {
    * 密码生成
    */
   public async passwordGenerate() {
+    this._numOfRowPwds = 0
     await this._passwordGenerate('', '', 1, 0)
   }
 }
