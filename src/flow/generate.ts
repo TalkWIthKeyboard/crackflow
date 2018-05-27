@@ -37,11 +37,11 @@ function generate() {
             await extraPcfg.passwordGenerate()
             break
           case 'Markov':
-            const markov = new Markov([], true, 3, false)
+            const markov = new Markov([], true, false, 3, false)
             await markov.passwordGenerate()
             break
           case 'extra-Markov':
-            const extraMarkov = new Markov([], true, 3, true)
+            const extraMarkov = new Markov([], true, true, 3, true)
             await extraMarkov.passwordGenerate()
             break
           default:

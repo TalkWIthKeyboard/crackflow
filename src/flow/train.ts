@@ -88,7 +88,7 @@ function train() {
                     code: (info).password,
                     count: (info).numcount || 1,
                   }
-                }), true, 3, false)
+                }), true, false, 3, false)
                 markov.train()
                 break
               case 'extra-Markov':
@@ -99,7 +99,7 @@ function train() {
                     count: (info).numcount || 1,
                     userInfo: _.omit(info, 'password'),
                   }
-                }), true, 3, true)
+                }), true, true, 3, true)
                 extraMarkov.train()
                 break
               default:

@@ -193,7 +193,7 @@ export default class MarkovPCFG extends Basic {
     // 起始
     if (index === 0 && num === 0) {
       const pcfgBeginUnits = this._getUnitsByNumber(units, this._level + 1)
-      const rowMarkovBeginUnits = await zrevrange(keys.REDIS_MARKOV_BEGIN_KEY(true), 0, -1, 'WITHSCORES')
+      const rowMarkovBeginUnits = await zrevrange(keys.REDIS_MARKOV_FRAGMENT_KEY(true), 0, -1, 'WITHSCORES')
       // 拿出符合条件的 Markov begin units
       const beginUnits = this._filterUnitByPCFGUnit(rowMarkovBeginUnits, pcfgBeginUnits.res)
       const total = this._calculateTotalOfSortedset(beginUnits)

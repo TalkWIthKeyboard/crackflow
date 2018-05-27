@@ -94,7 +94,7 @@ export const keys = {
     return `crackflow-${process.env.NODE_ENV}:${isExtra ? 'extra-' : ''}markov:probability:{{word}}`
   },
   // sortedset  记录起始词概率
-  REDIS_MARKOV_BEGIN_KEY: (isExtra: boolean) => {
-    return `crackflow-${process.env.NODE_ENV}:${isExtra ? 'extra-' : ''}markov:begin`
+  REDIS_MARKOV_FRAGMET_KEY: (isExtra: boolean) => {
+    return `crackflow-${process.env.NODE_ENV}:${isExtra ? 'extra-' : ''}markov:fragment`
   },
 }
