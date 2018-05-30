@@ -208,6 +208,9 @@ export default class PCFG extends Basic {
     if (this._numOfRowPwds > parseInt(process.env.LIMIT!)) {
       return
     }
+    if (Math.log(probability) < (this._isIncludeUserInfo ? -14: -20)) {
+      return
+    }
     // 边界条件
     if (index >= typeNumberList.length) {
       this._numOfRowPwds += 1

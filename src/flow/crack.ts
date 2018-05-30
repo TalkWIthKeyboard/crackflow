@@ -30,12 +30,12 @@ function crackPassword() {
     process.on('message', async index => {
       debug(`Worker: ${cluster.worker.id} started.`)
       const trainAlgorithm = trainAlgorithms[index]
-      const count = await mongo.Unit
+      const count = Math.min(await mongo.Unit
         .find({ source: { $in: source } })
         .count()
-        .exec()
+        .exec(), 2000000)
       const limit = 100000
-      const rightPwdsIndexList = splitToArray(Math.round(count * 0.8), count, limit)
+      const rightPwdsIndexList = splitToArray(Math.round(count * 0.95), count, limit)
       debug(`${source.join('/')}-${trainAlgorithm} get ${rightPwdsIndexList.length} rightPwdsIndex.`)
       const totalList = _.flatten(await Promise.mapSeries(rightPwdsIndexList, s => {
         return mongo.Unit
@@ -58,40 +58,46 @@ function crackPassword() {
             switch (trainAlgorithm) {
               case 'PCFG':
                 const pcfg = new PCFG([], false)
-                pwds = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:pcfg:probability`, 0, -1)
+                pwds = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:pcfg:probability`, 0, 450000)
                 break
               case 'Markov':
                 const markov = new Markov([], true, true, 3, false)
-                pwds = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:markov:probability`, 0, -1)
+                pwds = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:markov:probability`, 0, 450000)
                 break
               case 'extra-PCFG':
                 const extraPCFG = new PCFG([], true)
                 const pcfgStructures = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:extra-pcfg:probability`, 0, -1)
                 pwds = _.flatten(_.map(data, userInfo => {
-                  return extraPCFG.fillUserInfo(userInfo, pcfgStructures, 20)
+                  return extraPCFG.fillUserInfo(userInfo, pcfgStructures, 160)
                 }))
                 break
               case 'extra-Markov':
                 const extraMarkov = new Markov([], true, true, 3, true)
                 const markovStructures = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:extra-markov:probability`, 0, -1)
                 pwds = _.flatten(_.map(data, userInfo => {
-                  return extraMarkov.fillUserInfo(userInfo, markovStructures, 10)
+                  return extraMarkov.fillUserInfo(userInfo, markovStructures, 130)
                 }))
                 break
               case 'markov-PCFG':
+                const markovPCFG = new MarkovPCFG(3)
+                const markovPCFGStructures = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:markov-pcfg:probability`, 0, -1)
+                pwds = _.flatten(_.map(data, userInfo => {
+                  return markovPCFG.fillUserInfo(userInfo, markovPCFGStructures, 75)
+                }))
                 break
               default:
             }
-            debug(`${source} finished cracking all pwds: generate ${_.uniq(pwds as string[]).length}`)
+            debug(`${source}-${trainAlgorithm} finished cracking all pwds: generate ${_.uniq(pwds as string[]).length}`)
             return cover(
               _.uniq(_.map(pwds, p => p.replace(/¥/, ''))).sort(),
-              _.map(data, d => d.password).sort()
+              _.map(data, d => d.password).sort(),
+              trainAlgorithm
             )
           }).catch(err => {
             console.log(err)
           })
       }))
-      console.log(totalList)
+      console.log(trainAlgorithm, totalList)
     })
   }
 }

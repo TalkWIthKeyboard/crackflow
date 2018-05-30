@@ -30,15 +30,15 @@ function train() {
     process.on('message', async index => {
       debug(`Worker: ${cluster.worker.id} started.`)
       const trainAlgorithm = trainAlgorithms[index]
-      const count = await mongo.Unit
+      const count = Math.min(await mongo.UnitWithoutUserInfo
         .find({ source: { $in: source } })
         .count()
-        .exec()
+        .exec(), 2000000)
       const limit = 100000
-      const trainIndexList = splitToArray(0, Math.round(count * 0.8), limit)
+      const trainIndexList = splitToArray(0, Math.round(count * 0.95), limit)
       debug(`${source.join('/')}-${trainAlgorithm} get ${trainIndexList.length} trainIndex.`)
       await Promise.mapSeries(trainIndexList, s => {
-        return mongo.Unit
+        return mongo.UnitWithoutUserInfo
           .find({
             source: { $in: source },
           }, {
@@ -88,7 +88,7 @@ function train() {
                     code: (info).password,
                     count: (info).numcount || 1,
                   }
-                }), true, false, 3, false)
+                }), false, true, 3, false)
                 markov.train()
                 break
               case 'extra-Markov':
@@ -99,7 +99,7 @@ function train() {
                     count: (info).numcount || 1,
                     userInfo: _.omit(info, 'password'),
                   }
-                }), true, true, 3, true)
+                }), false, true, 3, true)
                 extraMarkov.train()
                 break
               default:

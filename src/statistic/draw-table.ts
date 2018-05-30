@@ -249,9 +249,11 @@ export function drawPasswordAppearCount(top: number, statisticMap, text: string,
     },
     xAxis: {
       type: 'value',
-      name: '次数',
+      name: '次数百分比',
       axisLabel: {
-        formatter: '{value}',
+        formatter: function(val) {
+          return val + '%';
+        },
       },
     },
     yAxis: {
@@ -275,7 +277,7 @@ export function drawPasswordAppearCount(top: number, statisticMap, text: string,
     path: imageDirPath + `/${fsName}.png`,
     option,
     width: 800,
-    height: 800,
+    height: 1000,
   })
 }
 
@@ -308,10 +310,15 @@ export function drawPasswordFeatureDistrubute(statisticMap, text: string, fsName
     xAxis: {
       type: 'category',
       boundaryGap: false,
+      name: text.includes('长度') ? '长度' : '字符',
       data: pwds,
     },
     yAxis: {
-      type: 'value',
+      axisLabel: {
+        formatter: function (val) {
+          return val + '%';
+        },
+      },
     },
     series: [
       {

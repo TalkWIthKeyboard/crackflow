@@ -29,15 +29,13 @@ export function splitToArray(start: number, end: number, limit: number): SplitIn
  * @param generatedPwds
  * @param userPwds
  */
-export function cover(generatedPwds: string[], userPwds: string[]) {
-  console.log(generatedPwds.slice(1000, 1100))
+export function cover(generatedPwds: string[], userPwds: string[], trainAlgorithm: string) {
   let gIndex = 0
   let uIndex = 0
   let total = 0
   while (gIndex < generatedPwds.length && uIndex < userPwds.length) {
     if (_.isEqual(generatedPwds[gIndex], userPwds[uIndex])) {
       total += 1
-      gIndex += 1
       uIndex += 1
     }
     if (generatedPwds[gIndex] < userPwds[uIndex]) {
@@ -47,8 +45,11 @@ export function cover(generatedPwds: string[], userPwds: string[]) {
       uIndex += 1
     }
   }
+  console.log(`${trainAlgorithm}: ${generatedPwds.length} / ${userPwds.length}, ${total} / ${generatedPwds.length}`)  
   return total
 }
 
-export const source = ['t12306']
-export const trainAlgorithms = ['Markov']
+export const source = ['phpbb', 'rock']
+// export const trainAlgorithms = ['extra-Markov', 'markov-PCFG', 'extra-PCFG']
+
+export const trainAlgorithms = ['PCFG']

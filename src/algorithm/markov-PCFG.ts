@@ -6,6 +6,19 @@ import { parserZrevrange as zrevrange } from '../utils'
 import { PCFGUnit, RangeResult } from './interface'
 import { defaultUserInfoMarkovType, defaultPCFGTypeToMarkovType, keys } from './default'
 
+interface SeachUnit {
+  index: number
+  num: number
+  preUnit: string
+  pwd: string
+  probability: number
+}
+
+interface Unit {
+  pwd: string
+  probability: string
+}
+
 /**
  * 仅考虑1阶段
  */
@@ -18,6 +31,11 @@ export default class MarkovPCFG extends Basic {
   private readonly _pcfgTypeToMarkovType
   // markvo type 到 pcfg type 的映射
   private readonly _markovTypeToPcfgType
+  //
+  private _temporaryList: Unit[]
+  private _limit: number
+
+  private _cache: {}
 
   constructor(
     level: number,
@@ -31,6 +49,7 @@ export default class MarkovPCFG extends Basic {
     this._level = level
     this._pcfgTypeToMarkovType = pcfgTypeToMarkovType
     this._markovTypeToPcfgType = _.invert(pcfgTypeToMarkovType)
+    this._cache = {}
   }
 
   /**
@@ -170,6 +189,87 @@ export default class MarkovPCFG extends Basic {
   }
 
   /**
+   * 宽度优先遍历出一个 PCFG 结构的口令
+   * @param probability 
+   * @param units 
+   */
+  private async _searchWidth(probability: number, units: PCFGUnit[]) {
+    const searchQueue: SeachUnit[] = []
+    // 添加初始元素
+    const pcfgBeginUnits = this._getUnitsByNumber(units, this._level)
+    const rowMarkovBeginUnits = await zrevrange(keys.REDIS_MARKOV_FRAGMENT_KEY(true), 0, -1, 'WITHSCORES')
+    // 拿出符合条件的 Markov begin units
+    const beginUnits = this._filterUnitByPCFGUnit(rowMarkovBeginUnits, pcfgBeginUnits.res).slice(0, 10)
+    const total = this._calculateTotalOfSortedset(beginUnits)
+    for (const unit of beginUnits) {
+      searchQueue.push({
+        index: pcfgBeginUnits.index,
+        num: pcfgBeginUnits.num,
+        preUnit: unit.key,
+        pwd: unit.key.replace(/，/g, ''),
+        probability: probability * (unit.value / total)
+      })
+    }
+    // 开始搜索
+    let head = 0
+    let foot = searchQueue.length
+    while (head < foot) {
+      const searchUnit = searchQueue[head]
+      if (searchUnit.index >= units.length) {
+        this._temporaryList.push({
+          pwd: searchUnit.pwd.replace(/，/g, ''),
+          probability: searchUnit.probability.toString(), 
+        })
+        head += 1
+        continue
+      }
+      if (Math.log(searchUnit.probability) < -9) {
+        head += 1
+        continue
+      }
+      // 基础信息类型
+      if (this._basicTypeList.includes(units[searchUnit.index].type)) {
+        let chars
+        // 这里对合法的元素做了缓存
+        if (!this._cache[`${searchUnit.preUnit}_${units[searchUnit.index].type}`]) {
+          const rowChars = await zrevrange(
+            keys.REDIS_MARKOV_TRANSFER_KEY(true).replace(/{{word}}/, searchUnit.preUnit),
+            0, -1, 'WITHSCORES'
+          )
+          chars = this._filterCharByType(rowChars, units[searchUnit.index].type).slice(0, 10)
+          this._cache[`${searchUnit.preUnit}_${units[searchUnit.index].type}`] = chars
+        } else {
+          chars = this._cache[`${searchUnit.preUnit}_${units[searchUnit.index].type}`]
+        }
+        const total = this._calculateTotalOfSortedset(chars)
+        const newNumber = searchUnit.num + 1 === units[searchUnit.index].num ? 0 : searchUnit.num + 1
+        const newIndex = newNumber === 0 ? searchUnit.index + 1 : searchUnit.index
+        for (const char of chars) {
+          searchQueue.push({
+            index: newIndex,
+            num: newNumber,
+            preUnit: searchUnit.preUnit.split('，').slice(1).join('，') + `，${char.key}`,
+            pwd: searchUnit.pwd + char.key,
+            probability: searchUnit.probability * (char.value / total),
+          })
+          foot += 1
+        }
+      } else {
+        // 用户信息类型
+        searchQueue.push({
+          index: searchUnit.index + 1,
+          num: 0,
+          preUnit: searchUnit.preUnit.split('，').slice(1).join('，') + `，${this._pcfgTypeToMarkovType[units[searchUnit.index].type]}`,
+          pwd: searchUnit.pwd + this._pcfgTypeToMarkovType[units[searchUnit.index].type],
+          probability: searchUnit.probability,
+        })
+        foot += 1
+      }
+      head += 1
+    }
+  }
+
+  /**
    * 深度优先遍历出一个 PCFG 结构的密码
    * @param index           第几个PCFG单元
    * @param num             现PCFG单元中的第几个字符
@@ -185,24 +285,27 @@ export default class MarkovPCFG extends Basic {
     probability: number,
     units: PCFGUnit[]
   ) {
+    if (this._limit > 20) {
+      return
+    }
     if (index >= units.length) {
-      // console.log(pwd, probability)
+      this._limit += 1
       redisClient.zadd(keys.REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY, probability.toString(), pwd.replace(/，/g, ''))
       return
     }
     // 起始
     if (index === 0 && num === 0) {
-      const pcfgBeginUnits = this._getUnitsByNumber(units, this._level + 1)
+      const pcfgBeginUnits = this._getUnitsByNumber(units, this._level)
       const rowMarkovBeginUnits = await zrevrange(keys.REDIS_MARKOV_FRAGMENT_KEY(true), 0, -1, 'WITHSCORES')
       // 拿出符合条件的 Markov begin units
-      const beginUnits = this._filterUnitByPCFGUnit(rowMarkovBeginUnits, pcfgBeginUnits.res)
+      const beginUnits = this._filterUnitByPCFGUnit(rowMarkovBeginUnits, pcfgBeginUnits.res).slice(0, 5)
       const total = this._calculateTotalOfSortedset(beginUnits)
       for (const unit of beginUnits) {
         await this._search(
           pcfgBeginUnits.index,
           pcfgBeginUnits.num,
-          unit.key.split('，').slice(1).join('，'),
-          unit.key.replace('/，/g', ''),
+          unit.key,
+          unit.key.replace(/，/g, ''),
           probability * (unit.value / total),
           units
         )
@@ -211,11 +314,17 @@ export default class MarkovPCFG extends Basic {
     } else {
       // 基础类型
       if (this._basicTypeList.includes(units[index].type)) {
-        const rowChars = await zrevrange(
-          keys.REDIS_MARKOV_TRANSFER_KEY(true).replace(/{{word}}/, preUnit),
-          0, -1, 'WITHSCORES'
-        )
-        const chars = this._filterCharByType(rowChars, units[index].type)
+        let chars
+        if (this._cache[`${preUnit}_${units[index].type}`]) {
+          const rowChars = await zrevrange(
+            keys.REDIS_MARKOV_TRANSFER_KEY(true).replace(/{{word}}/, preUnit),
+            0, -1, 'WITHSCORES'
+          )
+          chars = this._filterCharByType(rowChars, units[index].type).slice(0, 5)
+          this._cache[`${preUnit}_${units[index].type}`] = chars          
+        } else {
+          chars = this._cache[`${preUnit}_${units[index].type}`]
+        }
         const total = this._calculateTotalOfSortedset(chars)
         const newNumber = num + 1 === units[index].num ? 0 : num + 1
         const newIndex = newNumber === 0 ? index + 1 : index
@@ -247,14 +356,32 @@ export default class MarkovPCFG extends Basic {
    * 生成密码
    */
   public async passwordGenerate() {
-    const structures = (await zrevrange(keys.REDIS_PCFG_COUNT_KEY(true), 0, -1, 'WITHSCORES'))
+    const structures = (await zrevrange(keys.REDIS_PCFG_COUNT_KEY(true), 0, 3000, 'WITHSCORES'))
     const total = this._calculateTotalOfSortedset(structures)
+    let count = 0
     for (const structure of structures) {
+      this._temporaryList = []
       const units = structure.key.split(',')
-      await this._search(0, 0, '', '', structure.value / total, _.map(units, unit => {
+      await this._searchWidth(structure.value / total, _.map(units, unit => {
         const [type, num] = unit.split('/')
         return { type, num: num ? parseInt(num) : undefined }
       }))
+      count += 1
+      if (count % 500 === 0) {
+        console.log(count)
+      }
+      if (this._temporaryList.length > 0) {
+        redisClient.zadd(
+          keys.REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY,
+          ..._.flatten(_.map(
+            _.sortBy(this._temporaryList, t => parseFloat(t.probability))
+              .reverse()
+              .slice(0, 30),
+            u => {
+              return [u.probability, u.pwd]
+            }))
+        )
+      }
     }
   }
 }

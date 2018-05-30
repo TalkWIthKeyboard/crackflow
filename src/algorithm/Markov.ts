@@ -84,6 +84,13 @@ export default class Markov extends Basic {
     count: number
   ) {
     if (index >= pwd.length) {
+      if (num < this._level) {
+        redisClient.zincrby(
+          keys.REDIS_MARKOV_FRAGMENT_KEY(this._isIncludeUserInfo),
+          count,
+          thisUnit.replace(/，¥/g, '')
+        )
+      }
       return
     }
     let char = pwd[index]
@@ -101,12 +108,14 @@ export default class Markov extends Basic {
         num + 1 === this._level
           ? `${thisUnit}，${char}`      
           : `${thisUnit.split('，').slice(1).join('，')}，${char}`
-      // 对碎片进行记录
-      redisClient.zincrby(
-        keys.REDIS_MARKOV_FRAGMET_KEY(this._isIncludeUserInfo),
-        count,
-        newThisUnit.replace(/，¥/g, '')
-      )
+      if (num + 1 === this._level) {
+        // 对碎片进行记录
+        redisClient.zincrby(
+          keys.REDIS_MARKOV_FRAGMENT_KEY(this._isIncludeUserInfo),
+          count,
+          newThisUnit.replace(/，¥/g, '')
+        )
+      }
       if (num + 1 > this._level) {
         // 对转移进行记录
         redisClient.zincrby(
@@ -189,11 +198,14 @@ export default class Markov extends Basic {
     if (this._numOfRowPwds > parseInt(process.env.LIMIT!)) {
       return
     }
+    if (Math.log(probability) < (this._isIncludeUserInfo ? -14 : -16)) {
+      return
+    }
     if (num > 10) {
       return
     }
     const alternative = beforeUnit === ''
-      ? await zrevrange(keys.REDIS_MARKOV_FRAGMET_KEY(this._isIncludeUserInfo), 0, -1, 'WITHSCORES')
+      ? await zrevrange(keys.REDIS_MARKOV_FRAGMENT_KEY(this._isIncludeUserInfo), 0, -1, 'WITHSCORES')
       : await zrevrange(keys.REDIS_MARKOV_TRANSFER_KEY(this._isIncludeUserInfo).replace(/{{word}}/, beforeUnit), 0, -1, 'WITHSCORES')
     const total = _.reduce(
       _.map(alternative, a => a.value),
@@ -209,7 +221,8 @@ export default class Markov extends Basic {
       }
       const newPwd = pwd + unit.key
       const newProbability = probability * (unit.value / total)
-      if (_.last(newPwd) === '¥') {
+      // 带有用户信息的半成熟口令可以不限制字符长度
+      if (_.last(newPwd) === '¥' && newPwd.replace(/，/g, '').length > 5 || newPwd.includes('「')) {
         this._numOfRowPwds += 1
         redisClient.zadd(
           keys.REDIS_MARKOV_PWD_PROBABILITY_KEY(this._isIncludeUserInfo),

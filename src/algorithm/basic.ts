@@ -140,9 +140,9 @@ export default class Basic {
       }
       if (structure.includes('「')) {
         const matchList = structure.match(/(「[^「」 ]*」)/g)
-        this._searchFill(0, structure, matchList, userInfo)
+        this._searchFill(0, structure.replace(/¥/, ''), matchList, userInfo)
       } else {
-        this._temFilledPwdList.push(structure)
+        this._temFilledPwdList.push(structure.replace(/¥/, ''))
       }
     }
     return this._temFilledPwdList
