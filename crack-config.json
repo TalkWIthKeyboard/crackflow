@@ -1,0 +1,84 @@
+{
+  "parser": {
+    "tableInfo": [{
+      "tableName": "t12306",
+      "tableRowFeatureMap": {
+        "password": "password",
+        "email": "email",
+        "name": "name",
+        "CtfID": "ctfid",
+        "mobile": "mobile",
+        "username": "username"
+      },
+      "withUserInfo": true
+    }, {
+      "tableName": "duduniu",
+      "tableRowFeatureMap": {
+        "password": "password",
+        "username": "username",
+        "email": "email"
+          },
+      "withUserInfo": true
+    }, {
+      "tableName": "7k7k",
+      "tableRowFeatureMap": {
+        "password": "password",
+        "username": "email"
+          },
+      "withUserInfo": true
+    }, {
+      "tableName": "tianya",
+      "tableRowFeatureMap": {
+        "password": "password",
+        "email": "email",
+        "username": "username"
+          },
+      "withUserInfo": true
+    }, {
+      "tableName": "phpbb",
+      "tableRowFeatureMap": {
+        "password": "password",
+        "numcount": "numcount"
+          },
+      "withUserInfo": false
+    }, {
+      "tableName": "rock",
+      "tableRowFeatureMap": {
+        "password": "password",
+        "numcount": "numcount"
+          },
+      "withUserInfo": false
+    }]
+  },
+  "train": {
+    "sources": [
+      "t12306"
+    ]
+  },
+  "crack": {
+    "targets": [
+      "t12306"
+    ],
+    "numberOfUser": {
+      "extra-PCFG": 400,
+      "extra-Markov": 400,
+      "markov-PCFG": 400
+    },
+    "totalOfGeneratePwds": {
+      "PCFG": 450000,
+      "Markov": 450000
+    }
+  },
+  "global": {
+    "queryLimit": 100000,
+    "queryTotal": 2000000,
+    "trainProportion": 0.95,
+    "algorithms": [
+      "PCFG",
+      "Markov",
+      "extra-Markov",
+      "extra-PCFG",
+      "markov-PCFG"
+    ]
+  }
+}
