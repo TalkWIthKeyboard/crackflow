@@ -223,7 +223,7 @@ export default class MarkovPCFG extends Basic {
         head += 1
         continue
       }
-      if (Math.log(searchUnit.probability) < -9) {
+      if (Math.log(searchUnit.probability) < -12) {
         head += 1
         continue
       }

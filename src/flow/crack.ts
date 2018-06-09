@@ -68,21 +68,21 @@ function crackPassword() {
                 const extraPCFG = new PCFG([], true)
                 const pcfgStructures = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:extra-pcfg:probability`, 0, -1)
                 pwds = _.flatten(_.map(data, userInfo => {
-                  return extraPCFG.fillUserInfo(userInfo, pcfgStructures, 160)
+                  return extraPCFG.fillUserInfo(userInfo, pcfgStructures, 400)
                 }))
                 break
               case 'extra-Markov':
                 const extraMarkov = new Markov([], true, true, 3, true)
                 const markovStructures = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:extra-markov:probability`, 0, -1)
                 pwds = _.flatten(_.map(data, userInfo => {
-                  return extraMarkov.fillUserInfo(userInfo, markovStructures, 130)
+                  return extraMarkov.fillUserInfo(userInfo, markovStructures, 400)
                 }))
                 break
               case 'markov-PCFG':
                 const markovPCFG = new MarkovPCFG(3)
                 const markovPCFGStructures = await redisClient.zrevrange(`crackflow-${process.env.NODE_ENV}:markov-pcfg:probability`, 0, -1)
                 pwds = _.flatten(_.map(data, userInfo => {
-                  return markovPCFG.fillUserInfo(userInfo, markovPCFGStructures, 75)
+                  return markovPCFG.fillUserInfo(userInfo, markovPCFGStructures, 400)
                 }))
                 break
               default:

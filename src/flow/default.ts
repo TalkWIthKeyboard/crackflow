@@ -49,7 +49,7 @@ export function cover(generatedPwds: string[], userPwds: string[], trainAlgorith
   return total
 }
 
-export const source = ['phpbb', 'rock']
+export const source = ['t12306']
 // export const trainAlgorithms = ['extra-Markov', 'markov-PCFG', 'extra-PCFG']
 
-export const trainAlgorithms = ['PCFG']
+export const trainAlgorithms = ['extra-Markov', 'extra-PCFG', 'markov-PCFG']

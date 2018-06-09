@@ -30,7 +30,7 @@ function train() {
     process.on('message', async index => {
       debug(`Worker: ${cluster.worker.id} started.`)
       const trainAlgorithm = trainAlgorithms[index]
-      const count = Math.min(await mongo.UnitWithoutUserInfo
+      const count = Math.min(await mongo.Unit
         .find({ source: { $in: source } })
         .count()
         .exec(), 2000000)
@@ -38,7 +38,7 @@ function train() {
       const trainIndexList = splitToArray(0, Math.round(count * 0.95), limit)
       debug(`${source.join('/')}-${trainAlgorithm} get ${trainIndexList.length} trainIndex.`)
       await Promise.mapSeries(trainIndexList, s => {
-        return mongo.UnitWithoutUserInfo
+        return mongo.Unit
           .find({
             source: { $in: source },
           }, {
