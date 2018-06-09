@@ -7,37 +7,13 @@ import * as _ from 'lodash'
 import mongo from '../models'
 import PCFG from '../algorithm/PCFG'
 import Markov from '../algorithm/Markov'
-import redisClient from '../modules/redis-client'
+import MarkovPCFG from '../algorithm/markov-PCFG'
 import { passwordCount } from '../statistic/major-total'
+import { splitToArray, source, trainAlgorithms } from './default'
 
 const debug = DEBUG('crackflow:train')
 let tableIndex = 0
-const tableInfo = ['7k7k', 'duduniu', 't12306', 'tianya']
-const numCPUs = Math.min(os.cpus().length, tableInfo.length)
-
-interface SplitIndex {
-  start: number
-  limit: number
-}
-
-/**
- * 分割一个整体
- * @param start     开始位置的下标
- * @param end       结束位置的下标
- * @param limit     每个单元的限制个数
- */
-function _splitToArray(start: number, end: number, limit: number): SplitIndex[] {
-  const splitIndexList: SplitIndex[] = []
-  let index = start
-  while (index < end) {
-    splitIndexList.push({
-      start: index,
-      limit: index + limit < end ? limit : end - index,
-    })
-    index += limit
-  }
-  return splitIndexList
-}
+const numCPUs = Math.min(os.cpus().length, trainAlgorithms.length)
 
 /**
  * 训练模型
@@ -52,100 +28,89 @@ function train() {
     }
   } else {
     process.on('message', async index => {
-      debug(`Worker: ${cluster.worker.id} started.`)      
-      const table = tableInfo[index]
-      const count = await mongo.Unit
-        .find({ source: table })
+      debug(`Worker: ${cluster.worker.id} started.`)
+      const trainAlgorithm = trainAlgorithms[index]
+      const count = Math.min(await mongo.Unit
+        .find({ source: { $in: source } })
         .count()
-        .exec()
-      const limit = 10000
-      const trainIndexList = _splitToArray(0, Math.round(count * 0.8), 10000)
-      const testIndexList = _splitToArray(Math.round(count * 0.8), count , 10000)
-      debug(`${table} get ${trainIndexList.length} trainIndex.`)
+        .exec(), 2000000)
+      const limit = 100000
+      const trainIndexList = splitToArray(0, Math.round(count * 0.95), limit)
+      debug(`${source.join('/')}-${trainAlgorithm} get ${trainIndexList.length} trainIndex.`)
       await Promise.mapSeries(trainIndexList, s => {
         return mongo.Unit
-          .find({ source: table })
+          .find({
+            source: { $in: source },
+          }, {
+            __v: 0,
+            _id: 0,
+          })
           .skip(s.start)
           .limit(s.limit)
+          .lean(true)
           .exec()
           .then(async data => {
-            debug(`${table} get [${s.start} - ${s.limit + s.start}].`)
-            // 统计密码出现次数
-            await passwordCount(_.map(data, info => {
-              return {
-                password: (info as any).password,
-                numcount: (info as any).numcount,
-              }
-            }))
-            debug(`${table} finish password count.`)
-            // 进行PCFG训练
-            const pcfg = new PCFG(_.map(data, info => {
-              return {
-                code: (info as any).password,
-                count: (info as any).numcount,
-              }
-            }), true)
-            pcfg.train()
-            debug(`${table} finish pcfg train.`)
-            // 进行Markov训练
-            const markov = new Markov(_.map(data, info => {
-              return {
-                code: (info as any).password,
-                count: (info as any).numcount, 
-              }
-            }), true, 3, true)
-            markov.train()
-            debug(`${table} finish markov train.`)
+            debug(`${source.join('/')}-${trainAlgorithm} get [${s.start} - ${s.limit + s.start}].`)
+            switch (trainAlgorithm) {
+              case 'PCFG':
+                // 统计密码出现次数
+                await passwordCount(_.map(data, info => {
+                  return {
+                    password: (info).password,
+                    numcount: (info).numcount || 1,
+                  }
+                }))
+                debug(`${source.join('/')}-${trainAlgorithm} finish password count.`)
+                // 进行PCFG训练
+                const pcfg = new PCFG(_.map(data, info => {
+                  return {
+                    code: (info).password,
+                    count: (info).numcount || 1,
+                  }
+                }), false)
+                pcfg.train()
+                break
+              case 'extra-PCFG':
+                // 进行extra-PCFG训练
+                const extraPCFG = new PCFG(_.map(data, info => {
+                  return {
+                    code: (info).password,
+                    count: (info).numcount || 1,
+                    userInfo: _.omit(info, 'password'),
+                  }
+                }), true)
+                extraPCFG.train()
+                break
+              case 'Markov':
+                // 进行Markov训练
+                const markov = new Markov(_.map(data, info => {
+                  return {
+                    code: (info).password,
+                    count: (info).numcount || 1,
+                  }
+                }), false, true, 3, false)
+                markov.train()
+                break
+              case 'extra-Markov':
+                // 进行extra-Markov训练
+                const extraMarkov = new Markov(_.map(data, info => {
+                  return {
+                    code: (info).password,
+                    count: (info).numcount || 1,
+                    userInfo: _.omit(info, 'password'),
+                  }
+                }), false, true, 3, true)
+                extraMarkov.train()
+                break
+              default:
+            }
+            debug(`${source.join('/')} finish ${trainAlgorithm} train.`)
+          }).catch(err => {
+            console.log(err)
           })
       })
     })
   }
 }
 
-/**
- * 生成口令
- */
-function passwordGenerate() {
-  if (cluster.isMaster) {
-    debug(`Master: ${process.pid} started.`)
-    for (let i = 0; i < numCPUs; i += 1) {
-      const worker = cluster.fork()
-      worker.send(tableIndex)
-      tableIndex += 1
-    }
-  } else {
-    process.on('message', async index => {
-      debug(`Worker: ${cluster.worker.id} started.`)
-      const table = tableInfo[index]
-      const pcfg = new PCFG([], false)
-      await pcfg.passwordGenerate()
-      debug(`${table} finish pcfg generate.`)
-      const markov = new Markov([], false)
-      await markov.passwordGenerate()
-      debug(`${table} finish markov generate.`)
-    })
-  }
-}
-
 train()
-
-// clean()
-
-// async function clean() {
-//   const removeKeys = _.flatten(await Promise.all([
-//     redisClient.keys('crackflow-test:markov:*'),
-//   ]))
-//   console.log(removeKeys.length)
-//   if (removeKeys.length > 0) {
-//     await Promise.mapSeries(_.chunk(removeKeys, 1000), keys => {
-//       return redisClient.del(...keys)
-//     })
-//   }
-// }
-
-// clean().then(() => {
-//   process.exit(0)
-// }).catch(err => {
-//   console.log(err)
-//   process.exit(1)
-// })

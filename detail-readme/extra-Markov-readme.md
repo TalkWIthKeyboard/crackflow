@@ -69,7 +69,7 @@
         // 平衡繁生多个code的pwd和1个code的pwd的权重
         if (!this._temBeginWordSet[newThisUnit]) {
           redisClient.zincrby(
-            keys.REDIS_MARKOV_BEGIN_KEY,
+            keys.REDIS_MARKOV_FRAGMENT_KEY,
             count,
             newThisUnit.replace(/，¥/g, '')
           )
@@ -131,7 +131,7 @@
       return
     }
     const alternative = beforeUnit === ''
-      ? await zrevrange(keys.REDIS_MARKOV_BEGIN_KEY, 0, -1, 'WITHSCORES')
+      ? await zrevrange(keys.REDIS_MARKOV_FRAGMENT_KEY, 0, -1, 'WITHSCORES')
       : await zrevrange(keys.REDIS_MARKOV_TRANSFER_KEY.replace(/{{word}}/, beforeUnit), 0, -1, 'WITHSCORES')
     const total = _.reduce(
       _.map(alternative, a => a.value),

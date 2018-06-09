@@ -1,6 +1,5 @@
 import * as _ from 'lodash'
 
-import redisClient from '../modules/redis-client'
 import { PwdCount, UserInfo } from './interface'
 import { defaultUnusefulFeature, defaultBasicType, defaultUserInfoPCFGType, keys, defaultUserInfoMarkovType } from './default'
 
@@ -23,6 +22,8 @@ export default class Basic {
   protected _temFilledPwdList: string[]
   // 从Markov标定的特征到userInfoKey的映射
   protected _markovTypeToUserInfo: Object
+  // 每个用户生成的口令数量
+  private _everUserGeneratePwdLimit: number
 
   constructor(
     algorithmName: 'PCFG' | 'Markov' | 'Markov-PCFG',
@@ -58,13 +59,17 @@ export default class Basic {
     matchList: string[],
     userInfo: UserInfo
   ) {
-    // console.log(index, pwd, matchList, userInfo)
     if (index >= matchList.length) {
-      this._temFilledPwdList.push(pwd)
+      if (pwd.length > 5) {
+        this._temFilledPwdList.push(pwd)
+      }
       return
     }
     const matchString = matchList[index]
     const info = userInfo[this._markovTypeToUserInfo[matchString]]
+    if (info === '' || info === []) {
+      return
+    }
     switch (typeof info) {
       case 'string':
         this._searchFill(
@@ -97,9 +102,9 @@ export default class Basic {
   private _getProbabilityRedisKey(): string {
     switch (this._algorithmName) {
       case 'PCFG':
-        return keys.REDIS_PCFG_PWD_PROBABILITY_KEY
+        return keys.REDIS_PCFG_PWD_PROBABILITY_KEY(this._isIncludeUserInfo)
       case 'Markov':
-        return keys.REDIS_MARKOV_PWD_PROBABILITY_KEY
+        return keys.REDIS_MARKOV_PWD_PROBABILITY_KEY(this._isIncludeUserInfo)
       case 'Markov-PCFG':
         return keys.REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY
       default:
@@ -122,22 +127,24 @@ export default class Basic {
   /**
    * 填充用户信息到 Markov 生成的结构中
    */
-  public async fillUserInfo(
+  public fillUserInfo(
     userInfo: UserInfo,
-    top?: number
+    structures,
+    top: number = 100
   ) {
-    const structures = await redisClient.zrevrange(this._getProbabilityRedisKey(), 0, -1)
     this._temFilledPwdList = []
-    _.each(structures, structure => {
+    this._everUserGeneratePwdLimit = top
+    for (const structure of structures) {
+      if (this._temFilledPwdList.length > this._everUserGeneratePwdLimit) {
+        break
+      }
       if (structure.includes('「')) {
         const matchList = structure.match(/(「[^「」 ]*」)/g)
-        this._searchFill(0, structure, matchList, userInfo)
+        this._searchFill(0, structure.replace(/¥/, ''), matchList, userInfo)
       } else {
-        this._temFilledPwdList.push(structure)
+        this._temFilledPwdList.push(structure.replace(/¥/, ''))
       }
-    })
-    return top
-      ? this._temFilledPwdList.slice(0, top)
-      : this._temFilledPwdList
+    }
+    return this._temFilledPwdList
   }
 }

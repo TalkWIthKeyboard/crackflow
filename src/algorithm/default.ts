@@ -53,19 +53,48 @@ export const defaultPCFGTypeToMarkovType = {
   M: '「NPFL」',
 }
 
+/**
+ * 获取最终模型的key
+ */
+export function getProbabilityRedisKey(): string {
+  switch (this._algorithmName) {
+    case 'PCFG':
+      return keys.REDIS_PCFG_PWD_PROBABILITY_KEY(this._isIncludeUserInfo)
+    case 'Markov':
+      return keys.REDIS_MARKOV_PWD_PROBABILITY_KEY(this._isIncludeUserInfo)
+    case 'Markov-PCFG':
+      return keys.REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY
+    default:
+      return ''
+  }
+}
+
 export const keys = {
-  // sortedset { structure: count }
-  REDIS_PCFG_COUNT_KEY: `crackflow-${process.env.NODE_ENV}:pcfg:count`,
   // sortedset { pwd: probability }
   REDIS_MARKOV_PCFG_PWD_PROBABILITY_KEY: `crackflow-${process.env.NODE_ENV}:markov-pcfg:probability`,
   // sortedset { pwd: probability }
-  REDIS_MARKOV_PWD_PROBABILITY_KEY: `crackflow-${process.env.NODE_ENV}:markov:probability`,
+  REDIS_MARKOV_PWD_PROBABILITY_KEY: (isExtra: boolean) => {
+    return `crackflow-${process.env.NODE_ENV}:${isExtra ? 'extra-' : ''}markov:probability`
+  },
   // sortedset { pwd: probability }
-  REDIS_PCFG_PWD_PROBABILITY_KEY: `crackflow-${process.env.NODE_ENV}:pcfg:probability`,
-  // sortedset  记录 word -> any 的转移概率
-  REDIS_MARKOV_TRANSFER_KEY: `crackflow-${process.env.NODE_ENV}:markov:probability:{{word}}`,
-  // sortedset  记录起始词概率
-  REDIS_MARKOV_BEGIN_KEY: `crackflow-${process.env.NODE_ENV}:markov:begin`,
+  REDIS_PCFG_PWD_PROBABILITY_KEY: (isExtra: boolean) => {
+    return `crackflow-${process.env.NODE_ENV}:${isExtra ? 'extra-' : ''}pcfg:probability`
+  },
+
+  // sortedset { structure: count }
+  REDIS_PCFG_COUNT_KEY: (isExtra: boolean) => {
+    return `crackflow-${process.env.NODE_ENV}:${isExtra ? 'extra-' : ''}pcfg:count`
+  },
   // sortedset { fragmet: count }, {{type}} -> A/B/C, {{number}} -> 碎片的长度
-  REDIS_PCFG_FRAGMET_COUNT_KEY: `crackflow-${process.env.NODE_ENV}:pcfg:{{type}}:{{number}}`,
+  REDIS_PCFG_FRAGMET_COUNT_KEY: (isExtra: boolean) => {
+    return `crackflow-${process.env.NODE_ENV}:${isExtra ? 'extra-' : ''}pcfg:{{type}}:{{number}}`
+  },
+  // sortedset  记录 word -> any 的转移概率
+  REDIS_MARKOV_TRANSFER_KEY: (isExtra: boolean) => {
+    return `crackflow-${process.env.NODE_ENV}:${isExtra ? 'extra-' : ''}markov:probability:{{word}}`
+  },
+  // sortedset  记录起始词概率
+  REDIS_MARKOV_FRAGMENT_KEY: (isExtra: boolean) => {
+    return `crackflow-${process.env.NODE_ENV}:${isExtra ? 'extra-' : ''}markov:fragment`
+  },
 }

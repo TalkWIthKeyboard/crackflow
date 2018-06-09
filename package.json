@@ -8,12 +8,15 @@
     "compile": "tsc",
     "clean": "rm -rf dist",
     "purge": "rm -rf package-lock.json node_modules && npm run clean",
-    "dev": "npm run clean && npm run compile && NODE_ENV=dev PORT=3000 DEBUG=jike:game:* node dist/src/app.js",
-    "test": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow:* ava --serial dist/test/algorithm-test.js",
+    "dev": "npm run clean && npm run compile && NODE_ENV=t12306 PORT=3000 DEBUG=jike:game:* node dist/src/utils.js",
+    "test": "npm run clean && npm run compile && NODE_ENV=test LIMIT=10000 DEBUG=crackflow:* ava --serial dist/test/algorithm-test.js",
     "lint": "tslint --project .",
     "fix": "tslint --fix --project .",
-    "cluster": "npm run clean && npm run compile && NODE_ENV=test DEBUG=crackflow:* node dist/src/flow/train.js",
-    "statistic": "npm run clean && npm run compile && NODE_ENV=production DEBUG=crackflow:* node dist/src/statistic/index.js"
+    "removeRedis": "npm run clean && npm run compile && NODE_ENV=t12306 DEBUG=crackflow:* node dist/src/flow/clean.js",
+    "statistic": "npm run clean && npm run compile && NODE_ENV=t12306 DEBUG=crackflow:* node dist/src/statistic/index.js",
+    "train": "npm run clean && npm run compile && NODE_ENV=t12306 LIMIT=300000 DEBUG=crackflow:* node --max-old-space-size=8192 dist/src/flow/train.js",
+    "generate": "npm run clean && npm run compile && NODE_ENV=t12306 LIMIT=450000 DEBUG=crackflow:* node --max-old-space-size=4096 dist/src/flow/generate.js",
+    "crack": "npm run clean && npm run compile && NODE_ENV=t12306 LIMIT=300000 DEBUG=crackflow:* node --max-old-space-size=4096 dist/src/flow/crack.js"
   },
   "repository": {
     "type": "git",

@@ -153,7 +153,7 @@ async function markovPcfgTest(userInfo) {
   + 用于保存 `Markov` 算法的转移概率
   + `sortedset`  记录 `word -> char` 的转移概率
 
-+ `crackflow-${process.env.NODE_ENV}:markov:begin`
++ `crackflow-${process.env.NODE_ENV}:markov:fragment`
   + 用于保存 `Markov` 算法的起始词，以及该词的出现次数
   + `sortedset`  { word: count }
 

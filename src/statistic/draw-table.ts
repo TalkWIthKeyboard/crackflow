@@ -225,7 +225,7 @@ export function drawFeatureInclude(statisticMap) {
  * 画密码出现次数 top 50 的图
  * @param params
  */
-export function drawPasswordAppearCount(top: number, statisticMap) {
+export function drawPasswordAppearCount(top: number, statisticMap, text: string, fsName: string) {
   const pwds = _.map(statisticMap, u => u.key)
   const numcount = _.map(statisticMap, u => u.value)
 
@@ -239,19 +239,21 @@ export function drawPasswordAppearCount(top: number, statisticMap) {
 
   const option = {
     title: {
-      text: `密码出现次数（TOP${top}）`,
+      text: top === 100 || top === 50 ? `${text}（TOP${top}）` : text,
     },
     legend: {
-      data: ['密码出现次数'],
+      data: [text],
     },
     grid: {
       left: 100,
     },
     xAxis: {
       type: 'value',
-      name: '次数',
+      name: '次数百分比',
       axisLabel: {
-        formatter: '{value}',
+        formatter: function(val) {
+          return val + '%';
+        },
       },
     },
     yAxis: {
@@ -263,7 +265,7 @@ export function drawPasswordAppearCount(top: number, statisticMap) {
     },
     series: [
       {
-        name: '密码出现次数',
+        name: text,
         type: 'bar',
         label: seriesLabel,
         data: numcount,
@@ -272,9 +274,66 @@ export function drawPasswordAppearCount(top: number, statisticMap) {
   }
 
   echarts({
-    path: imageDirPath + '/password_appear_count.png',
+    path: imageDirPath + `/${fsName}.png`,
     option,
-    width: 1000,
+    width: 800,
     height: 1000,
+  })
+}
+
+/**
+ * 画口令的规律分布图（线图）
+ * @param statisticMap
+ * @param text
+ * @param fsName
+ */
+export function drawPasswordFeatureDistrubute(statisticMap, text: string, fsName: string) {
+  const pwds = _.map(statisticMap, u => u.key)
+  const numcount = _.map(statisticMap, u => u.value)
+
+  const option = {
+    title: {
+      text,
+    },
+    tooltip: {
+      trigger: 'axis',
+    },
+    legend: {
+      data: [text],
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      name: text.includes('长度') ? '长度' : '字符',
+      data: pwds,
+    },
+    yAxis: {
+      axisLabel: {
+        formatter: function (val) {
+          return val + '%';
+        },
+      },
+    },
+    series: [
+      {
+        name: text,
+        type: 'line',
+        stack: '总量',
+        data: numcount,
+      },
+    ],
+  }
+
+  echarts({
+    path: imageDirPath + `/${fsName}.png`,
+    option,
+    width: 800,
+    height: 800,
   })
 }

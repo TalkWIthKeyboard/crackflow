@@ -9,9 +9,13 @@ import { defaultUserInfoMarkovType, keys } from './default'
 
 export default class PCFG extends Basic {
   private readonly _userInfoMarkovType: Object
+  // 每个口令能变换出来的口令上限是1000 这个值用来累加做限制
+  private _numOfOnePwds: number
+  // 这个值用来累加做限制生成的半成熟口令的个数
+  private _numOfRowPwds: number
 
   constructor(
-    pwds: PwdCount[],    
+    pwds: PwdCount[],
     isIncludeUserInfo: boolean,
     userInfoMarkovType: Object = defaultUserInfoMarkovType,
     userInfoUnusefulFeature?: string[],
@@ -97,6 +101,9 @@ export default class PCFG extends Basic {
     count: number,
     userInfo?: UserInfo
   ) {
+    if (this._numOfOnePwds > 1000) {
+      return
+    }
     if (index >= pwd.length) {
       this._saveStructure(result, count)
       return
@@ -156,7 +163,7 @@ export default class PCFG extends Basic {
    */
   private _saveFragmet(fragmet: string, type: string, length: number, count: number) {
     redisClient.zincrby(
-      keys.REDIS_PCFG_FRAGMET_COUNT_KEY
+      keys.REDIS_PCFG_FRAGMET_COUNT_KEY(this._isIncludeUserInfo)
         .replace(/{{type}}/, type)
         .replace(/{{number}}/, length.toString()),
       count,
@@ -170,8 +177,9 @@ export default class PCFG extends Basic {
    * @param count       总个数
    */
   private _saveStructure(structure: string, count: number) {
+    this._numOfOnePwds += 1
     redisClient.zincrby(
-      keys.REDIS_PCFG_COUNT_KEY,
+      keys.REDIS_PCFG_COUNT_KEY(this._isIncludeUserInfo),
       count,
       structure
     )
@@ -196,11 +204,18 @@ export default class PCFG extends Basic {
     fragmetList,
     userInfo?: UserInfo
   ) {
+    // 限制半成熟口令生成的个数
+    if (this._numOfRowPwds > parseInt(process.env.LIMIT!)) {
+      return
+    }
+    if (Math.log(probability) < (this._isIncludeUserInfo ? -14: -20)) {
+      return
+    }
     // 边界条件
     if (index >= typeNumberList.length) {
-      // console.log(pwd, typeNumberList)
+      this._numOfRowPwds += 1
       redisClient.zadd(
-        keys.REDIS_PCFG_PWD_PROBABILITY_KEY,
+        keys.REDIS_PCFG_PWD_PROBABILITY_KEY(this._isIncludeUserInfo),
         probability.toString(),
         pwd
       )
@@ -279,6 +294,10 @@ export default class PCFG extends Basic {
     userInfo?: UserInfo
   ) {
     for (const structure of structures) {
+      // 限制生成的半成熟口令的个数
+      if (this._numOfRowPwds > parseInt(process.env.LIMIT!)) {
+        break
+      }
       const [...units] = structure.key.split(',')
       if (this._isBasicGeneratorIncludeUserInfoType(units)) {
         continue
@@ -291,13 +310,13 @@ export default class PCFG extends Basic {
         // tslint:disable-next-line
         return typeNumber.num !== undefined && typeNumber.num !== null
       })
-      // todo 优化
       const fragmetList = await Promise.map(hasFragmetType, u => {
         return zrevrange(
-          keys.REDIS_PCFG_FRAGMET_COUNT_KEY
+          keys.REDIS_PCFG_FRAGMET_COUNT_KEY(this._isIncludeUserInfo)
             .replace(/{{type}}/, u.type)
             .replace(/{{number}}/, u.num),
-          0, -1, 'WITHSCORES'
+          // todo 修改了枚举的个数
+          0, 20, 'WITHSCORES'
         )
       })
       this._makeUpPassword(0, 0, structure.value / count, '', typeNumberList, fragmetList, userInfo)
@@ -305,7 +324,7 @@ export default class PCFG extends Basic {
   }
 
   /**
-   * 计算密码总数
+   * 计算密码结构总数
    * @param basicGenerator
    */
   private _calculatePasswordCount(
@@ -323,7 +342,8 @@ export default class PCFG extends Basic {
   }
 
   public async passwordGenerate() {
-    const structures = await zrevrange(keys.REDIS_PCFG_COUNT_KEY, 0, -1, 'WITHSCORES')
+    const structures = await zrevrange(keys.REDIS_PCFG_COUNT_KEY(this._isIncludeUserInfo), 0, -1, 'WITHSCORES')
+    this._numOfRowPwds = 0
     await this._passwordGenerate(this._calculatePasswordCount(structures), structures)
   }
 
@@ -334,6 +354,7 @@ export default class PCFG extends Basic {
    */
   public train() {
     _.each(this._pwds, pwd => {
+      this._numOfOnePwds = 0
       this._search(
         pwd.code,
         0,
