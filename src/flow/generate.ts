@@ -5,9 +5,14 @@ import * as DEBUG from 'debug'
 import PCFG from '../algorithm/PCFG'
 import Markov from '../algorithm/Markov'
 import MarkovPCFG from '../algorithm/markov-PCFG'
-import { source, trainAlgorithms } from './default'
 
-const debug = DEBUG('crackflow:train')
+const globalConfig = require('../../../crack-config.json')
+// 使用哪些模型进行训练
+const trainAlgorithms = globalConfig.global.algorithms
+// 使用哪些数据源进行训练
+const sources = globalConfig.train.sources
+
+const debug = DEBUG('crackflow:generate')
 let tableIndex = 0
 const numCPUs = Math.min(os.cpus().length, trainAlgorithms.length)
 
@@ -16,15 +21,21 @@ const numCPUs = Math.min(os.cpus().length, trainAlgorithms.length)
  */
 function generate() {
   if (cluster.isMaster) {
-    debug(`Master: ${process.pid} started.`)
     for (let i = 0; i < numCPUs; i += 1) {
       const worker = cluster.fork()
       worker.send(tableIndex)
       tableIndex += 1
     }
+    let exitProcessCounter = 0
+    // 所有子进程完成任务以后主进程退出
+    cluster.on('exit', () => {
+      exitProcessCounter += 1
+      if (exitProcessCounter === numCPUs) {
+        process.exit(0)
+      }
+    })
   } else {
     process.on('message', async index => {
-      debug(`Worker: ${cluster.worker.id} started.`)
       const trainAlgorithm = trainAlgorithms[index]
       try {
         switch (trainAlgorithm) {
@@ -50,10 +61,11 @@ function generate() {
             break
           default:
         }
-        debug(`${source.join('/')} finish ${trainAlgorithm} train.`)
+        debug(`\n[${sources.join('/')}->${trainAlgorithm}]\n      Generate all passwords`)
       } catch (err) {
-        console.log(err)
+        debug('Error: ', err)
       }
+      cluster.worker.kill()
     })
   }
 }

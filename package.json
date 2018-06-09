@@ -1,8 +1,8 @@
 {
   "name": "crackflow",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "The framework of works about cracking password.",
-  "main": "index.js",
+  "main": "start.js",
   "scripts": {
     "start": "node dist/src/app.js",
     "compile": "tsc",
@@ -11,12 +11,7 @@
     "dev": "npm run clean && npm run compile && NODE_ENV=t12306 PORT=3000 DEBUG=jike:game:* node dist/src/utils.js",
     "test": "npm run clean && npm run compile && NODE_ENV=test LIMIT=10000 DEBUG=crackflow:* ava --serial dist/test/algorithm-test.js",
     "lint": "tslint --project .",
-    "fix": "tslint --fix --project .",
-    "removeRedis": "npm run clean && npm run compile && NODE_ENV=t12306 DEBUG=crackflow:* node dist/src/flow/clean.js",
-    "statistic": "npm run clean && npm run compile && NODE_ENV=t12306 DEBUG=crackflow:* node dist/src/statistic/index.js",
-    "train": "npm run clean && npm run compile && NODE_ENV=t12306 LIMIT=300000 DEBUG=crackflow:* node --max-old-space-size=8192 dist/src/flow/train.js",
-    "generate": "npm run clean && npm run compile && NODE_ENV=t12306 LIMIT=450000 DEBUG=crackflow:* node --max-old-space-size=4096 dist/src/flow/generate.js",
-    "crack": "npm run clean && npm run compile && NODE_ENV=t12306 LIMIT=300000 DEBUG=crackflow:* node --max-old-space-size=4096 dist/src/flow/crack.js"
+    "fix": "tslint --fix --project ."
   },
   "repository": {
     "type": "git",
@@ -38,7 +33,9 @@
     "mongoose": "^5.0.17",
     "mysql": "^2.15.0",
     "node-echarts": "^1.1.2",
-    "pinyin": "^2.8.3"
+    "pinyin": "^2.8.3",
+    "shelljs": "^0.8.2",
+    "yargs": "^11.0.0"
   },
   "devDependencies": {
     "@types/config": "0.0.34",
