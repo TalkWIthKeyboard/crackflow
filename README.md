@@ -1,12 +1,60 @@
-# Crackflow
-> The framework of works about cracking password.
+# crack-flow
+> The framework of cracking password.
 
-## Engineering
+## Install
 
-+ [技术选型](./detail-readme/project-language-tool.md)
-+ [清洗数据](./detail-readme/clean-data.md)
+```
+$ git clone https://github.com/TalkWIthKeyboard/crackflow
+$ cd crackflow
+$ npm install
+```
+
+## Usage
+
+该项目抽象了口令猜测实验的多个步骤，主要涵盖了从原始数据到猜测口令这个过程中的各个环节。各个环节中的参数可以通过对 `crack-config.json` 的配置来进行修改，对特定用户生成口令阶段可以在 `user-info.json` 中来配置特定用户的个人信息。而各个环节之间是相互依赖的，需要注意先后顺序，并保持在同一个 `Redis` 环境下进行实验。项目中的环境参数由 `config` 进行管理，需要在根目录下新建 `config` 文件夹来统一存放配置文件。
+
+整个项目的启动都集成在了 `start.js` 脚本当中，所以可以统一的使用 `NodeJS start.js` 来启动各个环节，其中 `-t` 参数用来区分每个环节。
+
+### 清洗数据 & 提取特征
+ + `-t`: parser
+ + 清洗的数据源: `crack-config.json->train->sources`
+
+### 训练模型
+ + `-t`: train
+ + 使用的数据源: `crack-config.json->train->sources`
+ + 使用的模型: `crack-config.json->global->algorithms` 
+
+### 生成半成熟口令
+ + `-t`: generate 
+ + `-d`: 使用某个数据源训练的模型来进行生成
+ + `-l`: 限制生成半成熟口令的个数
+
+### 命中实验
+ + `-t`: crack
+ + 目标数据源: `crack-config.json->crack->targets`
+ + 基于用户信息的算法中每个用户生成的口令数量限制: `crack-config.json->crack->numberOfUser`
+ + 非基于用户信息的算法中对生成总口令数量的限制: `crack-config.json->crack->totalOfGeneratePwds`
+
+### 对特定用户生成口令
+ + `-t`: show
+ + `-d`: 使用某个数据源训练的模型来进行生成
+ + `-l`: 基于用户信息的算法中每个用户生成的口令数量限制
+ + 用户信息: `user-info.json`
+ + 成功后会在根目录下新建 `pwds.txt` 文件对生成的口令进行展示
+
+### 清除缓存
+ + `-t`: clean
+ + `-d`: 对某个数据源训练的模型进行清除
+
+### 绘制统计图
+ + `-t`: statistic
+ + `-d`: 对某个数据源训练的模型进行统计绘制
 
 ## Algorithm
+项目中实验了 `PCFG`、`Markov` 基础算法，重现了基于用户信息的 `extra-Markov` 算法，改进了基于用户信息的 `extra-PCFG` 算法，原创了基于用户信息的混合算法 `markov-PCFG` 算法。
+
+并对于 `Markov` 系列的算法实现了可配置的标准化方法 `end-symbol`，以及按概率顺序生成口令的 `enumPwds` 方法。
+
 对于算法，抽象了三个大步骤，`Basic` 基类也分别暴露了三个 `pulic` 方法来进行实现：
 
 + **Train：** 通过用户信息和口令对模型进行训练
@@ -87,6 +135,7 @@ async function markovPcfgTest(userInfo) {
   const pwds = await markovPCFG.fillUserInfo(userInfo, 10)
 }
 ```
+
 ### API
 
 #### PCFG
@@ -129,7 +178,7 @@ async function markovPcfgTest(userInfo) {
 + `basicType: Object` : 基础类型的模式转换规则 **[有默认值]**
 
 ### Store
-由于在训练中会使用多进程并且避免 `node` 对新老生代内存以及堆栈和字符串长度等多个限制，中间的多个结果会保存在 `Redis` 中。所以为了进一步对效率的考虑，多个普通的存储过程都以异步的形式来实现。
+由于在训练中会使用多进程并且避免 `NodeJS` 对新老生代内存以及堆栈和字符串长度等多个限制，中间的多个结果会保存在 `Redis` 中。所以为了进一步对效率的考虑，多个普通的存储过程都以异步的形式来实现。
 
 下面会列出所有的算法中会使用到的 `Redis-key`：
 
