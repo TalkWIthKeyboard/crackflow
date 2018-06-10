@@ -13,7 +13,7 @@ $ npm install
 
 该项目抽象了口令猜测实验的多个步骤，主要涵盖了从原始数据到猜测口令这个过程中的各个环节。各个环节中的参数可以通过对 `crack-config.json` 的配置来进行修改，对特定用户生成口令阶段可以在 `user-info.json` 中来配置特定用户的个人信息。而各个环节之间是相互依赖的，需要注意先后顺序，并保持在同一个 `Redis` 环境下进行实验。项目中的环境参数由 `config` 进行管理，需要在根目录下新建 `config` 文件夹来统一存放配置文件。
 
-整个项目的启动都集成在了 `start.js` 脚本当中，所以可以统一的使用 `NodeJS start.js` 来启动各个环节，其中 `-t` 参数用来区分每个环节。
+整个项目的启动都集成在了 `start.js` 脚本当中，所以可以统一的使用 `node start.js` 来启动各个环节，其中 `-t` 参数用来区分每个环节。
 
 ### 清洗数据 & 提取特征
  + `-t`: parser
@@ -51,7 +51,7 @@ $ npm install
  + `-d`: 对某个数据源训练的模型进行统计绘制
 
 ## Algorithm
-项目中实验了 `PCFG`、`Markov` 基础算法，重现了基于用户信息的 `extra-Markov` 算法，改进了基于用户信息的 `extra-PCFG` 算法，原创了基于用户信息的混合算法 `markov-PCFG` 算法。
+项目中实现了 `PCFG`、`Markov` 基础算法，重现了基于用户信息的 `extra-Markov` 算法，改进了基于用户信息的 `extra-PCFG` 算法，原创了基于用户信息的混合算法 `markov-PCFG` 算法。
 
 并对于 `Markov` 系列的算法实现了可配置的标准化方法 `end-symbol`，以及按概率顺序生成口令的 `enumPwds` 方法。
 
@@ -60,8 +60,6 @@ $ npm install
 + **Train：** 通过用户信息和口令对模型进行训练
 + **PasswordGenerate：** 通过模型对基础口令结构进行生成
 + **FillUserInfo：** 使用用户信息对口令结构进行填充
-
-该项目主要实现了三个算法，与经典算法的区别是将用户信息加入了算法当中。
 
 ### PCFG
 > [算法实现的具体介绍](./detail-readme/extra-PCFG-readme.md)
